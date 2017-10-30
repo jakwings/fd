@@ -24,10 +24,12 @@ USAGE:
 
 OPTIONS:
     -g, --glob
-            Match the whole file path with a glob pattern.
+            Match the whole file path with a glob pattern. [default: use regex
+            pattern]
 
     -r, --regex
-            The pattern is a regex pattern. It can match part of the file path.
+            The search pattern is a regex pattern by default. It can match part
+            of the file path.
 
     -u, --unicode
             Turn on Unicode support for regex patterns. Character classes are
@@ -61,17 +63,17 @@ OPTIONS:
 
     -I, --no-ignore
             Show search results from files and directories that would otherwise
-            be ignored by '.*ignore' files.
+            be ignored by .*ignore files.
 
     -t, --type <filetype>
-            Filter the search by type:
+            Filter the search by type: [default: no filter]
                 directory or d: directories
                      file or f: regular files
                   symlink or l: symbolic links
                executable or x: executable regular files
 
     -d, --max-depth <max-depth>
-            Limit the directory traversal to a given depth. 0 means unlimited.
+            Limit the directory traversal to a given depth.
 
     -c, --color <when>
             Declare when to use color for the pattern match output:
@@ -80,10 +82,10 @@ OPTIONS:
                 always: always use colorized output
 
     -j, --threads <number>
-            The number of threads to use for searching & command execution.
-            [default: number of available CPU cores]
+            The number of threads to use for searching & command execution. 0
+            means [default: number of available CPU cores]
 
-        --max-buffer-time <max-buffer-time>
+        --max-buffer-time <milliseconds>
             The amount of time for the search results to be buffered and sorted
             before streaming.
 
@@ -103,11 +105,11 @@ OPTIONS:
 
 ARGS:
     <DIRECTORY>
-            The directory where the filesystem search is rooted (optional). If
-            omitted, search the current working directory.
+            The directory where the filesystem search is rooted. If omitted,
+            search the current working directory.
 
     <PATTERN>
-            The search pattern, a regular expression. (optional)
+            The search pattern, a regular expression or glob string. [optional]
 ```
 
 

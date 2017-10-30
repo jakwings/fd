@@ -114,7 +114,7 @@ fn main() {
     let num_thread = args.value_of("threads")
         .map(|num_str| {
             match usize::from_str_radix(num_str, 10) {
-                Ok(num) => std::cmp::max(num_cpu, num),  // 0 means default value: num_cpu
+                Ok(num) => if num > 0 { num } else { num_cpu },
                 Err(err) => int_error("threads", num_str, &err.to_string()),
             }
         })

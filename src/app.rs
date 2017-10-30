@@ -241,7 +241,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "threads",
         "Set number of threads to use for searching & command execution.",
         "The number of threads to use for searching & command execution. \
-         [default: number of available CPU cores]"
+         0 means [default: number of available CPU cores]"
     );
 
     doc!(

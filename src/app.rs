@@ -102,9 +102,12 @@ pub fn build() -> App<'static, 'static> {
                 .takes_value(true)
                 .value_name("number"),
         )
-        .arg(arg("max-buffer-time").long("max-buffer-time").takes_value(
-            true,
-        ))
+        .arg(
+            arg("max-buffer-time")
+                .long("max-buffer-time")
+                .takes_value(true)
+                .value_name("milliseconds"),
+        )
         .arg(
             arg("exec")
                 .long("exec")
@@ -133,14 +136,14 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "use-glob",
         "Search with a glob pattern. [default: use regex pattern]",
-        "Match the whole file path with a glob pattern."
+        "Match the whole file path with a glob pattern. [default: use regex pattern]"
     );
 
     doc!(
         help,
         "use-regex",
         "Search with a regex pattern. [default]",
-        "The pattern is a regex pattern. It can match part of the file path."
+        "The search pattern is a regex pattern by default. It can match part of the file path."
     );
 
     doc!(
@@ -198,7 +201,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "no-ignore",
         "Do not respect .(git)ignore files.",
         "Show search results from files and directories that would otherwise be ignored by \
-            '.*ignore' files."
+         .*ignore files."
     );
 
     doc!(
@@ -206,7 +209,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "file-type",
         "Filter by type: d,directory, f,file, l,symlink, x,executable",
         concat!(
-            "Filter the search by type:\n",
+            "Filter the search by type: [default: no filter]\n",
             "    directory or d: directories\n",
             "         file or f: regular files\n",
             "      symlink or l: symbolic links\n",
@@ -218,7 +221,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "max-depth",
         "Set maximum search depth. [default: none]",
-        "Limit the directory traversal to a given depth. 0 means unlimited."
+        "Limit the directory traversal to a given depth."
     );
 
     doc!(
@@ -261,15 +264,15 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "DIRECTORY",
-        "The root directory for the filesystem search. (optional)",
-        "The directory where the filesystem search is rooted (optional). \
+        "The root directory for the filesystem search. [optional]",
+        "The directory where the filesystem search is rooted. \
          If omitted, search the current working directory."
     );
 
     doc!(
         help,
         "PATTERN",
-        "The search pattern, a regular expression. (optional)"
+        "The search pattern, a regular expression or glob string. [optional]"
     );
 
     help

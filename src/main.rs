@@ -112,11 +112,9 @@ fn main() {
 
     let num_cpu = num_cpus::get();
     let num_thread = args.value_of("threads")
-        .map(|num_str| {
-            match usize::from_str_radix(num_str, 10) {
-                Ok(num) => if num > 0 { num } else { num_cpu },
-                Err(err) => int_error("threads", num_str, &err.to_string()),
-            }
+        .map(|num_str| match usize::from_str_radix(num_str, 10) {
+            Ok(num) => if num > 0 { num } else { num_cpu },
+            Err(err) => int_error("threads", num_str, &err.to_string()),
         })
         .or_else(|| {
             args.value_of_os("max-buffer-time").map(|num_str| {

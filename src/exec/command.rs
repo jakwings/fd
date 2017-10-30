@@ -103,7 +103,7 @@ mod tests {
 
     macro_rules! mkv {
         ($($x:expr),*) => (<[_]>::into_vec(Box::new([$(OsStr::new($x)),*])));
-        ($($x:expr,)*) => (vec![$(OsStr::new($x)),*]);
+        ($($x:expr,)*) => (mkv![$(OsStr::new($x)),*]);
     }
 
     fn mks(prog: &str) -> OsString {

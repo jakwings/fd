@@ -75,18 +75,18 @@ matrix:
     #  env: TARGET=x86_64-apple-darwin
 
     # Code formatting check
-    - os: linux
-      rust: stable
-      # skip the global install step
-      install:
-        - cargo install --force rustfmt
-      script: cargo fmt -- --write-mode=diff
-    - os: linux
-      rust: nightly
-      # skip the global install step
-      install:
-        - cargo install --force rustfmt-nightly
-      script: cargo fmt -- --write-mode=diff
+    #- os: linux
+    #  rust: stable
+    #  # skip the global install step
+    #  install:
+    #    - cargo install --force rustfmt
+    #  script: cargo fmt -- --write-mode=diff
+    #- os: linux
+    #  rust: nightly
+    #  # skip the global install step
+    #  install:
+    #    - cargo install --force rustfmt-nightly
+    #  script: cargo fmt -- --write-mode=diff
 
 addons:
   apt:

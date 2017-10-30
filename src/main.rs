@@ -1,101 +1,139 @@
-// Copyright (c) 2017 fd developers
-// Licensed under the Apache License, Version 2.0
-// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0>
-// or the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-// at your option. All files in the project carrying such
-// notice may not be copied, modified, or distributed except
-// according to those terms.
-
 extern crate ansi_term;
 extern crate atty;
-#[macro_use]
+#[macro_use(crate_version)]
 extern crate clap;
+extern crate ctrlc;
+extern crate globset;
 extern crate ignore;
-#[macro_use]
-extern crate lazy_static;
 #[cfg(all(unix, not(target_os = "redox")))]
 extern crate libc;
+extern crate nix;
 extern crate num_cpus;
 extern crate regex;
-extern crate regex_syntax;
-#[cfg(windows)]
-extern crate windows;
 
-pub mod fshelper;
-pub mod lscolors;
 mod app;
 mod exec;
+mod fshelper;
+mod glob;
 mod internal;
+mod lscolors;
 mod output;
 mod walk;
 
 use std::env;
-use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time;
 
 use atty::Stream;
-use regex::RegexBuilder;
+use regex::bytes::RegexBuilder;
 
-use exec::TokenizedCommand;
-use internal::{error, pattern_has_uppercase_char, FdOptions, PathDisplay};
-use lscolors::LsColors;
-use walk::FileType;
+use self::exec::ExecTemplate;
+use self::fshelper::{is_dir, to_absolute_path};
+use self::glob::GlobBuilder;
+use self::internal::{AppOptions, error, int_error, int_error_os};
+use self::lscolors::LsColors;
+use self::walk::FileType;
 
 fn main() {
-    let matches = app::build_app().get_matches();
+    let args = app::build().get_matches();
 
-    // Get the search pattern
-    let empty_pattern = String::new();
-    let pattern = matches.value_of("pattern").unwrap_or(&empty_pattern);
+    let pattern = args.value_of("PATTERN").unwrap_or_else(|| {
+        error("need a UTF-8 encoded pattern")
+    });
 
-    // Get the current working directory
-    let current_dir = Path::new(".");
-    if !fshelper::is_dir(current_dir) {
-        error("Error: could not get current directory.");
+    let current_dir = PathBuf::from(".");
+    if !is_dir(&current_dir) {
+        error("cannot get current directory");
     }
 
-    // Get the root directory for the search
-    let mut root_dir_buf = match matches.value_of("path") {
-        Some(path) => PathBuf::from(path),
-        None => current_dir.to_path_buf(),
+    let mut root_dir = match args.value_of_os("DIRECTORY") {
+        Some(path_str) => {
+            let path = PathBuf::from(path_str);
+            if !path_str.is_empty() && path.is_relative() &&
+                !(path.starts_with(".") || path.starts_with(".."))
+            {
+                PathBuf::from(".").join(path)
+            } else {
+                path
+            }
+        }
+        None => current_dir.clone(),
     };
-    if !fshelper::is_dir(&root_dir_buf) {
-        error(&format!(
-            "Error: '{}' is not a directory.",
-            root_dir_buf.to_string_lossy()
-        ));
+    if !is_dir(&root_dir) {
+        error(&format!("{:?} is not a directory", root_dir.as_os_str()));
     }
 
-    let path_display = if matches.is_present("absolute-path") || root_dir_buf.is_absolute() {
-        PathDisplay::Absolute
-    } else {
-        PathDisplay::Relative
+    let absolute = args.is_present("absolute-path") || root_dir.is_absolute();
+
+    if absolute && root_dir.is_relative() {
+        root_dir = to_absolute_path(&root_dir).unwrap();
+    }
+
+    let file_type = match args.value_of("file-type") {
+        Some("d") |
+        Some("directory") => FileType::Directory,
+        Some("f") | Some("file") => FileType::Regular,
+        Some("l") | Some("symlink") => FileType::SymLink,
+        Some("x") |
+        Some("executable") => FileType::Executable,
+        Some(_) | None => {
+            if let Some(sym) = args.value_of_os("file-type") {
+                error(&format!("unrecognizable file type {:?}", sym))
+            } else {
+                FileType::Any
+            }
+        }
     };
 
-    if path_display == PathDisplay::Absolute && root_dir_buf.is_relative() {
-        root_dir_buf = fshelper::absolute_path(root_dir_buf.as_path()).unwrap();
-    }
-    let root_dir = root_dir_buf.as_path();
+    let max_depth = args.value_of("max-depth")
+        .map(|num_str| match usize::from_str_radix(num_str, 10) {
+            Ok(num) => num,
+            Err(err) => int_error("max-depth", num_str, &err.to_string()),
+        })
+        .or_else(|| {
+            args.value_of_os("max-depth").map(|num_str| {
+                int_error_os("max-depth", &num_str, "is not an integer");
+            })
+        });
 
-    // The search will be case-sensitive if the command line flag is set or
-    // if the pattern has an uppercase character (smart case).
-    let case_sensitive = !matches.is_present("ignore-case") &&
-        (matches.is_present("case-sensitive") || pattern_has_uppercase_char(pattern));
+    let max_buffer_time = args.value_of("max-buffer-time")
+        .map(|num_str| match u64::from_str_radix(num_str, 10) {
+            Ok(num) => time::Duration::from_millis(num),
+            Err(err) => int_error("max-buffer-time", num_str, &err.to_string()),
+        })
+        .or_else(|| {
+            args.value_of_os("max-buffer-time").map(|num_str| {
+                int_error_os("max-buffer-time", &num_str, "is not an integer");
+            })
+        });
 
-    let colored_output = match matches.value_of("color") {
+    let num_cpu = num_cpus::get();
+    let num_thread = args.value_of("threads")
+        .map(|num_str| {
+            match usize::from_str_radix(num_str, 10) {
+                Ok(num) => std::cmp::max(num_cpu, num),  // 0 means default value: num_cpu
+                Err(err) => int_error("threads", num_str, &err.to_string()),
+            }
+        })
+        .or_else(|| {
+            args.value_of_os("max-buffer-time").map(|num_str| {
+                int_error_os("threads", &num_str, "is not an integer");
+            })
+        })
+        .unwrap_or(num_cpu);
+
+    let colorful = match args.value_of("color") {
         Some("always") => true,
         Some("never") => false,
         _ => atty::is(Stream::Stdout),
     };
-    #[cfg(windows)]
-    let colored_output = colored_output && windows::enable_colored_output();
-
-    let ls_colors = if colored_output {
+    let ls_colors = if colorful {
+        // TODO: env::var_os
         Some(
             env::var("LS_COLORS")
-                .ok()
                 .map(|val| LsColors::from_string(&val))
                 .unwrap_or_default(),
         )
@@ -103,51 +141,64 @@ fn main() {
         None
     };
 
-    let command = matches.value_of("exec").map(|x| TokenizedCommand::new(x));
+    let command = args.values_of_os("exec").map(|cmd_args| {
+        // `cmd_args` does not contain the terminator ";"
+        ExecTemplate::new(&cmd_args.collect())
+    });
 
-    let config = FdOptions {
-        case_sensitive,
-        search_full_path: matches.is_present("full-path"),
-        ignore_hidden: !(matches.is_present("hidden") ||
-                             matches.occurrences_of("rg-alias-hidden-ignore") >= 2),
-        read_ignore: !(matches.is_present("no-ignore") ||
-                           matches.is_present("rg-alias-hidden-ignore")),
-        follow_links: matches.is_present("follow"),
-        null_separator: matches.is_present("null_separator"),
-        max_depth: matches.value_of("depth").and_then(|n| {
-            usize::from_str_radix(n, 10).ok()
-        }),
-        threads: std::cmp::max(
-            matches
-                .value_of("threads")
-                .and_then(|n| usize::from_str_radix(n, 10).ok())
-                .unwrap_or_else(num_cpus::get),
-            1,
-        ),
-        max_buffer_time: matches
-            .value_of("max-buffer-time")
-            .and_then(|n| u64::from_str_radix(n, 10).ok())
-            .map(time::Duration::from_millis),
-        path_display,
-        ls_colors,
-        file_type: match matches.value_of("file-type") {
-            Some("f") | Some("file") => FileType::RegularFile,
-            Some("d") |
-            Some("directory") => FileType::Directory,
-            Some("l") | Some("symlink") => FileType::SymLink,
-            _ => FileType::Any,
-        },
-        extension: matches.value_of("extension").map(|e| {
-            e.trim_left_matches('.').to_lowercase()
-        }),
-        command,
+    let config = AppOptions {
+        unicode: args.is_present("unicode"),
+        use_glob: args.is_present("use-glob"),
+        case_insensitive: args.is_present("ignore-case"),
+        match_full_path: args.is_present("full-path"),
+        dot_files: args.is_present("dot-files"),
+        read_ignore: !args.is_present("no-ignore"),
+        follow_symlink: args.is_present("follow-symlink"),
+        null_terminator: args.is_present("null_terminator"),
+        command: command,
+        ls_colors: ls_colors,
+        max_buffer_time: max_buffer_time,
+        max_depth: max_depth,
+        threads: num_thread,
+        absolute_path: absolute,
+        file_type: file_type,
     };
 
-    match RegexBuilder::new(pattern)
-        .case_insensitive(!config.case_sensitive)
+    let mut builder = if !config.use_glob {
+        if config.unicode {
+            RegexBuilder::new(pattern)
+        } else {
+            // XXX: so ugly
+            RegexBuilder::new(&args.value_of_os("PATTERN")
+                .and_then(escape_pattern)
+                .unwrap())
+        }
+    } else {
+        GlobBuilder::new(pattern, config.match_full_path)
+    };
+    match builder
+        .unicode(!config.use_glob && config.unicode)
+        .case_insensitive(config.case_insensitive)
         .dot_matches_new_line(true)
         .build() {
-        Ok(re) => walk::scan(root_dir, Arc::new(re), Arc::new(config)),
-        Err(err) => error(err.description()),
+        Ok(re) => walk::scan(&root_dir, Arc::new(re), Arc::new(config)),
+        Err(err) => error(&err.to_string()),
     }
+}
+
+fn escape_pattern(pattern: &OsStr) -> Option<String> {
+    let mut bytes = Vec::new();
+
+    for c in pattern.as_bytes() {
+        let c = *c;
+
+        if c <= 0x1F || c >= 0x7F {
+            let mut buff = format!("\\x{:02X}", c);
+            bytes.append(unsafe { buff.as_mut_vec() });
+        } else {
+            bytes.push(c);
+        }
+    }
+
+    String::from_utf8(bytes).ok()
 }

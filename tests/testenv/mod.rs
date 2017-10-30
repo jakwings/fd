@@ -1,24 +1,10 @@
-// Copyright (c) 2017 fd developers
-// Licensed under the Apache License, Version 2.0
-// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0>
-// or the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-// at your option. All files in the project carrying such
-// notice may not be copied, modified, or distributed except
-// according to those terms.
-
-use std;
 use std::env;
 use std::fs;
-use std::io;
-use std::io::Write;
+use std::io::{self, Write};
+use std::os::unix;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process;
-
-#[cfg(unix)]
-use std::os::unix;
-
-#[cfg(windows)]
-use std::os::windows;
 
 extern crate diff;
 extern crate tempdir;
@@ -30,20 +16,25 @@ pub struct TestEnv {
     /// Temporary working directory.
     temp_dir: TempDir,
 
-    /// Path to the *fd* executable.
-    fd_exe: PathBuf,
+    /// Path to the executable.
+    ff_exe: PathBuf,
 }
 
 /// Create the working directory and the test files.
 fn create_working_directory() -> Result<TempDir, io::Error> {
-    let temp_dir = TempDir::new("fd-tests")?;
+    let temp_dir = TempDir::new("ff-tests")?;
 
     {
         let root = temp_dir.path();
 
         fs::create_dir_all(root.join("one/two/three"))?;
 
-        fs::File::create(root.join("a.foo"))?;
+        let executable = fs::File::create(root.join("a.foo"))?;
+        let perms = executable.metadata()?.permissions();
+        executable.set_permissions(
+            fs::Permissions::from_mode(perms.mode() | 0o111),
+        )?;
+
         fs::File::create(root.join("one/b.foo"))?;
         fs::File::create(root.join("one/two/c.foo"))?;
         fs::File::create(root.join("one/two/C.Foo2"))?;
@@ -51,12 +42,9 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
         fs::create_dir(root.join("one/two/three/directory_foo"))?;
         fs::File::create(root.join("ignored.foo"))?;
         fs::File::create(root.join(".hidden.foo"))?;
+        fs::File::create(root.join("α β"))?;
 
-        #[cfg(unix)] unix::fs::symlink(root.join("one/two"), root.join("symlink"))?;
-
-        // Note: creating symlinks on Windows requires the `SeCreateSymbolicLinkPrivilege` which
-        // is by default only granted for administrators.
-        #[cfg(windows)] windows::fs::symlink_dir(root.join("one/two"), root.join("symlink"))?;
+        unix::fs::symlink(root.join("one/two"), root.join("symlink"))?;
 
         fs::File::create(root.join(".ignore"))?.write_all(
             b"ignored.foo",
@@ -66,33 +54,33 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
     Ok(temp_dir)
 }
 
-/// Find the *fd* executable.
-fn find_fd_exe() -> PathBuf {
-    // Tests exe is in target/debug/deps, the *fd* exe is in target/debug
+/// Find the *ff* executable.
+fn find_ff_exe() -> PathBuf {
+    // Tests exe is in target/debug/deps, the *ff* exe is in target/debug
     let root = env::current_exe()
         .expect("tests executable")
         .parent()
         .expect("tests executable directory")
         .parent()
-        .expect("fd executable directory")
+        .expect("ff executable directory")
         .to_path_buf();
 
-    let exe_name = if cfg!(windows) { "fd.exe" } else { "fd" };
+    let exe_name = "ff";
 
     root.join(exe_name)
 }
 
-/// Format an error message for when *fd* did not exit successfully.
+/// Format an error message for when *ff* did not exit successfully.
 fn format_exit_error(args: &[&str], output: &process::Output) -> String {
     format!(
-        "`fd {}` did not exit successfully.\nstdout:\n---\n{}---\nstderr:\n---\n{}---",
+        "`ff {}` did not exit successfully.\nstdout:\n---\n{}---\nstderr:\n---\n{}---",
         args.join(" "),
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     )
 }
 
-/// Format an error message for when the output of *fd* did not match the expected output.
+/// Format an error message for when the output of *ff* did not match the expected output.
 fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
     // Generate diff text.
     let diff_text = diff::lines(expected, actual)
@@ -107,7 +95,7 @@ fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
 
     format!(
         concat!(
-            "`fd {}` did not produce the expected output.\n",
+            "`ff {}` did not produce the expected output.\n",
             "Showing diff between expected and actual:\n{}\n"
         ),
         args.join(" "),
@@ -118,16 +106,13 @@ fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
 /// Normalize the output for comparison.
 fn normalize_output(s: &str, trim_left: bool) -> String {
     // Split into lines and normalize separators.
-    let mut lines = s.replace('\0', "NULL\n")
-        .lines()
-        .map(|line| {
-            let line = if trim_left { line.trim_left() } else { line };
-            line.replace('/', &std::path::MAIN_SEPARATOR.to_string())
-        })
+    let text = s.replace('\0', "NULL\n");
+    let mut lines = text.lines()
+        .into_iter()
+        .map(|line| if trim_left { line.trim_left() } else { line })
         .collect::<Vec<_>>();
 
-    // Sort ignoring case.
-    lines.sort_by_key(|s| s.to_lowercase());
+    lines.sort_by_key(|s| s.clone());
 
     lines.join("\n")
 }
@@ -135,11 +120,11 @@ fn normalize_output(s: &str, trim_left: bool) -> String {
 impl TestEnv {
     pub fn new() -> TestEnv {
         let temp_dir = create_working_directory().expect("working directory");
-        let fd_exe = find_fd_exe();
+        let ff_exe = find_ff_exe();
 
         TestEnv {
             temp_dir: temp_dir,
-            fd_exe: fd_exe,
+            ff_exe: ff_exe,
         }
     }
 
@@ -154,12 +139,12 @@ impl TestEnv {
         PathBuf::from(components.next().expect("root directory").as_os_str())
     }
 
-    /// Assert that calling *fd* with the specified arguments produces the expected output.
+    /// Assert that calling *ff* with the specified arguments produces the expected output.
     pub fn assert_output(&self, args: &[&str], expected: &str) {
         self.assert_output_subdirectory(".", args, expected)
     }
 
-    /// Assert that calling *fd* in the specified path under the root working directory,
+    /// Assert that calling *ff* in the specified path under the root working directory,
     /// and with the specified arguments produces the expected output.
     pub fn assert_output_subdirectory<P: AsRef<Path>>(
         &self,
@@ -167,13 +152,13 @@ impl TestEnv {
         args: &[&str],
         expected: &str,
     ) {
-        // Setup *fd* command.
-        let mut cmd = process::Command::new(&self.fd_exe);
+        // Setup *ff* command.
+        let mut cmd = process::Command::new(&self.ff_exe);
         cmd.current_dir(self.temp_dir.path().join(path));
         cmd.args(args);
 
-        // Run *fd*.
-        let output = cmd.output().expect("fd output");
+        // Run *ff*.
+        let output = cmd.output().expect("ff output");
 
         // Check for exit status.
         if !output.status.success() {

@@ -1,52 +1,43 @@
-// Copyright (c) 2017 fd developers
-// Licensed under the Apache License, Version 2.0
-// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0>
-// or the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-// at your option. All files in the project carrying such
-// notice may not be copied, modified, or distributed except
-// according to those terms.
-
-use std::env;
-use std::process::Command;
-use std::sync::{Arc, Mutex};
 use std::io;
+use std::process::{Command, exit};
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{self, AtomicBool};
 
-lazy_static! {
-    /// On non-Windows systems, the `SHELL` environment variable will be used to determine the
-    /// preferred shell of choice for execution. Windows will simply use `cmd`.
-    static ref COMMAND: (String, &'static str) = if cfg!(target_os = "windows") {
-        ("cmd".into(), "/C")
-    } else {
-        (env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into()), "-c")
-    };
-}
+use super::ExecCommand;
+use super::SIGINT;
 
 /// A state that offers access to executing a generated command.
-///
-/// The ticket holds a mutable reference to a string that contains the command to be executed.
-/// After execution of the the command via the `then_execute()` method, the string will be
-/// cleared so that a new command can be written to the string in the future.
-pub struct CommandTicket<'a> {
-    command: &'a mut String,
-    out_perm: Arc<Mutex<()>>,
+pub struct ExecTicket {
+    command: ExecCommand,
+    out_lock: Arc<Mutex<()>>,
+    quitting: Arc<AtomicBool>,
 }
 
-impl<'a> CommandTicket<'a> {
-    pub fn new(command: &'a mut String, out_perm: Arc<Mutex<()>>) -> CommandTicket<'a> {
-        CommandTicket { command, out_perm }
+impl ExecTicket {
+    pub fn new(
+        command: ExecCommand,
+        out_lock: Arc<Mutex<()>>,
+        quitting: Arc<AtomicBool>,
+    ) -> ExecTicket {
+        ExecTicket {
+            command,
+            out_lock,
+            quitting,
+        }
     }
 
-    /// Executes the command stored within the ticket, and
-    /// clearing the command's buffer when finished.'
-    #[cfg(not(unix))]
-    pub fn then_execute(self) {
+    /// Executes the command stored within the ticket,
+    /// and clearing the command's buffer when finished.
+    #[cfg(target_os = "redox")]
+    pub fn execute(&self) {
         use std::process::Stdio;
         use std::io::Write;
 
+        self.exit_if_sigint();
+
         // Spawn a shell with the supplied command.
-        let cmd = Command::new(COMMAND.0.as_str())
-            .arg(COMMAND.1)
-            .arg(&self.command)
+        let cmd = Command::new(&self.command.prog)
+            .args(&self.command.args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output();
@@ -56,7 +47,7 @@ impl<'a> CommandTicket<'a> {
             Ok(output) => {
                 // While this lock is active, this thread will be the only thread allowed
                 // to write it's outputs.
-                let _lock = self.out_perm.lock().unwrap();
+                let _lock = self.out_lock.lock().unwrap();
 
                 let stdout = io::stdout();
                 let stderr = io::stderr();
@@ -64,19 +55,18 @@ impl<'a> CommandTicket<'a> {
                 let _ = stdout.lock().write_all(&output.stdout);
                 let _ = stderr.lock().write_all(&output.stderr);
             }
-            Err(why) => eprintln!("fd: exec error: {}", why),
+            Err(err) => eprintln!("{} {:?}", err.description(), self.command.prog),
         }
-
-        // Clear the buffer for later re-use.
-        self.command.clear();
     }
 
-    #[cfg(all(unix))]
-    pub fn then_execute(self) {
+    #[cfg(all(unix, not(target_os = "redox")))]
+    pub fn execute(&self) {
         use libc::{close, dup2, pipe, STDERR_FILENO, STDOUT_FILENO};
         use std::fs::File;
         use std::os::unix::process::CommandExt;
         use std::os::unix::io::FromRawFd;
+
+        self.exit_if_sigint();
 
         // Initial a pair of pipes that will be used to
         // pipe the std{out,err} of the spawned process.
@@ -89,9 +79,8 @@ impl<'a> CommandTicket<'a> {
         }
 
         // Spawn a shell with the supplied command.
-        let cmd = Command::new(COMMAND.0.as_str())
-            .arg(COMMAND.1)
-            .arg(&self.command)
+        let cmd = Command::new(&self.command.prog)
+            .args(&self.command.args)
             // Configure the pipes accordingly in the child.
             .before_exec(move || unsafe {
                 // Redirect the child's std{out,err} to the write ends of our pipe.
@@ -124,7 +113,7 @@ impl<'a> CommandTicket<'a> {
                 let _ = child.wait();
 
                 // Create a lock to ensure that this thread has exclusive access to writing.
-                let _lock = self.out_perm.lock().unwrap();
+                let _lock = self.out_lock.lock().unwrap();
 
                 // And then write the outputs of the process until EOF is sent to each file.
                 let stdout = io::stdout();
@@ -132,10 +121,14 @@ impl<'a> CommandTicket<'a> {
                 let _ = io::copy(&mut pout, &mut stdout.lock());
                 let _ = io::copy(&mut perr, &mut stderr.lock());
             }
-            Err(why) => eprintln!("fd: exec error: {}", why),
+            Err(err) => eprintln!("{} {:?}", err.to_string(), self.command.prog),
         }
+    }
 
-        // Clear the command string's buffer for later re-use.
-        self.command.clear();
+    fn exit_if_sigint(&self) {
+        if self.quitting.load(atomic::Ordering::Relaxed) {
+            let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
+            exit(0x80 + signum);
+        }
     }
 }

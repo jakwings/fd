@@ -58,36 +58,34 @@ matrix:
     #   env: TARGET=x86_64-apple-darwin
 
     # Minimum Rust supported channel.
-    - os: linux
-      rust: 1.19.0
-      env: TARGET=x86_64-unknown-linux-gnu
-    - os: linux
-      rust: 1.19.0
-      env: TARGET=x86_64-unknown-linux-musl
-    - os: linux
-      rust: 1.19.0
-      env: TARGET=i686-unknown-linux-gnu
-    - os: linux
-      rust: 1.19.0
-      env: TARGET=i686-unknown-linux-musl
-    - os: osx
-      rust: 1.19.0
-      env: TARGET=x86_64-apple-darwin
+    #- os: linux
+    #  rust: 1.19.0
+    #  env: TARGET=x86_64-unknown-linux-gnu
+    #- os: linux
+    #  rust: 1.19.0
+    #  env: TARGET=x86_64-unknown-linux-musl
+    #- os: linux
+    #  rust: 1.19.0
+    #  env: TARGET=i686-unknown-linux-gnu
+    #- os: linux
+    #  rust: 1.19.0
+    #  env: TARGET=i686-unknown-linux-musl
+    #- os: osx
+    #  rust: 1.19.0
+    #  env: TARGET=x86_64-apple-darwin
 
     # Code formatting check
     - os: linux
       rust: stable
       # skip the global install step
       install:
-        - which cargo-install-update || cargo install cargo-update
-        - cargo install-update rustfmt
+        - cargo install --force rustfmt
       script: cargo fmt -- --write-mode=diff
     - os: linux
       rust: nightly
       # skip the global install step
       install:
-        - which cargo-install-update || cargo install cargo-update
-        - cargo install-update rustfmt-nightly
+        - cargo install --force rustfmt-nightly
       script: cargo fmt -- --write-mode=diff
 
 addons:
@@ -113,4 +111,5 @@ script:
 
 notifications:
   email:
-    on_success: never
+    on_success: change
+    on_failure: always

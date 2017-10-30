@@ -1,392 +1,416 @@
-// Copyright (c) 2017 fd developers
-// Licensed under the Apache License, Version 2.0
-// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0>
-// or the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-// at your option. All files in the project carrying such
-// notice may not be copied, modified, or distributed except
-// according to those terms.
-
-//! Integration tests for the CLI interface of fd.
+//! Integration tests for the CLI interface of ff.
 
 extern crate regex;
 
 mod testenv;
 
-use testenv::TestEnv;
 use regex::escape;
 
-fn get_absolute_root_path(env: &TestEnv) -> String {
-    let path = env.test_root()
+use self::testenv::TestEnv;
+
+fn get_test_root(env: &TestEnv) -> String {
+    env.test_root()
         .canonicalize()
-        .expect("absolute path")
+        .expect("real path")
         .to_str()
-        .expect("string")
-        .to_string();
-
-    #[cfg(windows)]
-    let path = path.trim_left_matches(r"\\?\").to_string();
-
-    path
+        .expect("utf-8 string")
+        .to_string()
 }
 
 /// Simple tests
 #[test]
 fn test_simple() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(&["a.foo"], "a.foo");
-    te.assert_output(&["b.foo"], "one/b.foo");
-    te.assert_output(&["d.foo"], "one/two/three/d.foo");
-
-    te.assert_output(
-        &["foo"],
-        "a.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
+    env.assert_output(
+        &[],
+        "./a.foo
+         ./α β
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
     );
 
-    te.assert_output(
-        &[],
-        "a.foo
-        one
-        one/b.foo
-        one/two
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three
-        one/two/three/d.foo
-        one/two/three/directory_foo
-        symlink",
+    env.assert_output(
+        &[".", ""],
+        "./a.foo
+         ./α β
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
+    );
+
+    env.assert_output(&[".", "a.foo"], "./a.foo");
+    env.assert_output(&[".", "b.foo"], "./one/b.foo");
+    env.assert_output(&[".", "d.foo"], "./one/two/three/d.foo");
+
+    env.assert_output(
+        &[".", "foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
     );
 }
 
 /// Explicit root path
 #[test]
 fn test_explicit_root_path() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["foo", "one"],
-        "one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
+    env.assert_output(
+        &["one", "foo"],
+        "./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
     );
 
-    te.assert_output(
-        &["foo", "one/two/three"],
-        "one/two/three/d.foo
-        one/two/three/directory_foo",
+    env.assert_output(
+        &["one/two/three", "foo"],
+        "./one/two/three/d.foo
+         ./one/two/three/directory_foo",
     );
 
-    te.assert_output_subdirectory(
+    env.assert_output_subdirectory(
         "one/two",
-        &["foo", "../../"],
+        &["../../", "foo"],
         "../../a.foo
-        ../../one/b.foo
-        ../../one/two/c.foo
-        ../../one/two/C.Foo2
-        ../../one/two/three/d.foo
-        ../../one/two/three/directory_foo",
+         ../../one/b.foo
+         ../../one/two/c.foo
+         ../../one/two/three/d.foo
+         ../../one/two/three/directory_foo",
     );
 
-    te.assert_output_subdirectory(
+    env.assert_output_subdirectory(
         "one/two/three",
-        &["", ".."],
-        "../c.foo
-        ../C.Foo2
-        ../three
-        ../three/d.foo
-        ../three/directory_foo",
+        &[".."],
+        "../C.Foo2
+         ../c.foo
+         ../three
+         ../three/d.foo
+         ../three/directory_foo",
     );
 }
 
 /// Regex searches
 #[test]
 fn test_regex_searches() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["[a-c].foo"],
-        "a.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2",
+    env.assert_output(
+        &[".", "[a-c].foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo",
     );
 
-    te.assert_output(
-        &["--case-sensitive", "[a-c].foo"],
-        "a.foo
-        one/b.foo
-        one/two/c.foo",
+    env.assert_output(
+        &[".", "[a-c].foo", "--case-sensitive"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo",
     );
 }
 
-/// Smart case
+/// Match Unicode string (--unicode)
 #[test]
-fn test_smart_case() {
-    let te = TestEnv::new();
+fn test_unicode_aware() {
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["c.foo"],
-        "one/two/c.foo
-        one/two/C.Foo2",
+    env.assert_output(&[".", "\\xCE"], "./α β");
+    env.assert_output(&["--unicode", ".", "\\xCE"], "");
+}
+
+/// Glob searches (--glob)
+#[test]
+fn test_glob_searches() {
+    let env = TestEnv::new();
+
+    env.assert_output(
+        &["--glob", ".", "*.foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo",
     );
 
-    te.assert_output(&["C.Foo"], "one/two/C.Foo2");
-
-    te.assert_output(&["Foo"], "one/two/C.Foo2");
-
-    // Only literal uppercase chars should trigger case sensitivity.
-    te.assert_output(
-        &["\\Ac"],
-        "one/two/c.foo
-        one/two/C.Foo2",
+    env.assert_output(
+        &["--glob", "--regex", ".", "[a-c].foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo",
     );
-    te.assert_output(&["\\AC"], "one/two/C.Foo2");
+
+    env.assert_output(
+        &["--regex", "--glob", ".", "[a-c].foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo",
+    );
+
+    env.assert_output(&["--glob", ".", "*", "--full-path"], "");
+
+    env.assert_output(
+        &["--glob", ".", "**", "--full-path"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
+    );
+
+    env.assert_output(
+        &["--glob", ".", "**/*.foo", "--full-path"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo",
+    );
+
+    env.assert_output(
+        &["--glob", ".", "*/**/*.foo", "--full-path"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo",
+    );
+
+    env.assert_output(
+        &["--glob", ".", "**/**/*.foo", "--full-path"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo",
+    );
 }
 
 /// Case sensitivity (--case-sensitive)
 #[test]
 fn test_case_sensitive() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(&["--case-sensitive", "c.foo"], "one/two/c.foo");
+    env.assert_output(&[".", "c.foo", "--case-sensitive"], "./one/two/c.foo");
 
-    te.assert_output(&["--case-sensitive", "C.Foo"], "one/two/C.Foo2");
+    env.assert_output(&[".", "C.Foo", "--case-sensitive"], "./one/two/C.Foo2");
 
-    te.assert_output(
-        &["--ignore-case", "--case-sensitive", "C.Foo"],
-        "one/two/C.Foo2",
+    env.assert_output(
+        &[".", "C.Foo", "--ignore-case", "--case-sensitive"],
+        "./one/two/C.Foo2",
     );
 }
 
 /// Case insensitivity (--ignore-case)
 #[test]
 fn test_case_insensitive() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["--ignore-case", "C.Foo"],
-        "one/two/c.foo
-        one/two/C.Foo2",
+    env.assert_output(
+        &[".", "C.Foo", "--ignore-case"],
+        "./one/two/C.Foo2
+         ./one/two/c.foo",
     );
 
-    te.assert_output(
-        &["--case-sensitive", "--ignore-case", "C.Foo"],
-        "one/two/c.foo
-        one/two/C.Foo2",
+    env.assert_output(
+        &[".", "C.Foo", "--case-sensitive", "--ignore-case"],
+        "./one/two/C.Foo2
+         ./one/two/c.foo",
     );
 }
 
 /// Full path search (--full-path)
 #[test]
 fn test_full_path() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    let root = te.system_root();
+    let root = env.system_root();
     let prefix = escape(&root.to_string_lossy());
 
-    te.assert_output(
+    env.assert_output(
         &[
-            "--full-path",
+            ".",
             &format!("^{prefix}.*three.*foo$", prefix = prefix),
+            "--full-path",
         ],
-        "one/two/three/d.foo
-        one/two/three/directory_foo",
+        "./one/two/three/d.foo
+         ./one/two/three/directory_foo",
     );
 }
 
-/// Hidden files (--hidden)
+/// Hidden files (--all)
 #[test]
 fn test_hidden() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["--hidden", "foo"],
-        ".hidden.foo
-        a.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
+    env.assert_output(
+        &[".", "foo", "--all"],
+        "./.hidden.foo
+         ./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+
+    env.assert_output(
+        &[".", "foo", "--all", "--no-ignore"],
+        "./.hidden.foo
+         ./a.foo
+         ./ignored.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
     );
 }
 
 /// Ignored files (--no-ignore)
 #[test]
 fn test_no_ignore() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["--no-ignore", "foo"],
-        "a.foo
-        ignored.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
-    );
-
-    te.assert_output(
-        &["--hidden", "--no-ignore", "foo"],
-        ".hidden.foo
-        a.foo
-        ignored.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
-    );
-}
-
-/// Ignored files with ripgrep aliases (-u / -uu)
-#[test]
-fn test_no_ignore_aliases() {
-    let te = TestEnv::new();
-
-    te.assert_output(
-        &["-u", "foo"],
-        "a.foo
-        ignored.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
-    );
-
-    te.assert_output(
-        &["-uu", "foo"],
-        ".hidden.foo
-        a.foo
-        ignored.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo
-        one/two/three/directory_foo",
+    env.assert_output(
+        &[".", "foo", "--no-ignore"],
+        "./a.foo
+         ./ignored.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
     );
 }
 
 /// Symlinks (--follow)
 #[test]
 fn test_follow() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["--follow", "c.foo"],
-        "one/two/c.foo
-        one/two/C.Foo2
-        symlink/c.foo
-        symlink/C.Foo2",
+    env.assert_output(
+        &[".", "c.foo", "--follow"],
+        "./one/two/c.foo
+         ./symlink/c.foo",
     );
 }
 
 /// Null separator (--print0)
 #[test]
 fn test_print0() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
-        &["--print0", "foo"],
-        "a.fooNULL
-        one/b.fooNULL
-        one/two/C.Foo2NULL
-        one/two/c.fooNULL
-        one/two/three/d.fooNULL
-        one/two/three/directory_fooNULL",
+    env.assert_output(
+        &[".", "foo", "--print0"],
+        "./a.fooNULL
+         ./one/b.fooNULL
+         ./one/two/c.fooNULL
+         ./one/two/three/d.fooNULL
+         ./one/two/three/directory_fooNULL",
     );
 }
 
 /// Maximum depth (--max-depth)
 #[test]
 fn test_max_depth() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
+    env.assert_output(
         &["--max-depth", "3"],
-        "a.foo
-        one
-        one/b.foo
-        one/two
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three
-        symlink",
+        "./a.foo
+         ./α β
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./symlink",
     );
 
-    te.assert_output(
+    env.assert_output(
         &["--max-depth", "2"],
-        "a.foo
-        one
-        one/b.foo
-        one/two
-        symlink",
+        "./a.foo
+         ./α β
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./symlink",
     );
 
-    te.assert_output(
+    env.assert_output(
         &["--max-depth", "1"],
-        "a.foo
-        one
-        symlink",
+        "./a.foo
+         ./α β
+         ./one
+         ./symlink",
     );
+
+    env.assert_output(&["--max-depth", "0"], "");
 }
 
 /// Absolute paths (--absolute-path)
 #[test]
 fn test_absolute_path() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    let abs_path = get_absolute_root_path(&te);
+    let abs_path = get_test_root(&env);
 
-    te.assert_output(
+    env.assert_output(
         &["--absolute-path"],
         &format!(
             "{abs_path}/a.foo
-            {abs_path}/one
-            {abs_path}/one/b.foo
-            {abs_path}/one/two
-            {abs_path}/one/two/c.foo
-            {abs_path}/one/two/C.Foo2
-            {abs_path}/one/two/three
-            {abs_path}/one/two/three/d.foo
-            {abs_path}/one/two/three/directory_foo
-            {abs_path}/symlink",
-            abs_path = &abs_path
+             {abs_path}/α β
+             {abs_path}/one
+             {abs_path}/one/b.foo
+             {abs_path}/one/two
+             {abs_path}/one/two/C.Foo2
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo
+             {abs_path}/symlink",
+            abs_path = abs_path
         ),
     );
 
-    te.assert_output(
-        &["--absolute-path", "foo"],
+    env.assert_output(
+        &[".", "foo", "--absolute-path"],
         &format!(
             "{abs_path}/a.foo
-            {abs_path}/one/b.foo
-            {abs_path}/one/two/c.foo
-            {abs_path}/one/two/C.Foo2
-            {abs_path}/one/two/three/d.foo
-            {abs_path}/one/two/three/directory_foo",
-            abs_path = &abs_path
+             {abs_path}/one/b.foo
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo",
+            abs_path = abs_path
         ),
     );
 
-    te.assert_output(
-        &["foo", &abs_path],
+    env.assert_output(
+        &[&abs_path, "foo"],
         &format!(
             "{abs_path}/a.foo
-            {abs_path}/one/b.foo
-            {abs_path}/one/two/c.foo
-            {abs_path}/one/two/C.Foo2
-            {abs_path}/one/two/three/d.foo
-            {abs_path}/one/two/three/directory_foo",
-            abs_path = &abs_path
+             {abs_path}/one/b.foo
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo",
+            abs_path = abs_path
         ),
     );
 }
@@ -394,58 +418,37 @@ fn test_absolute_path() {
 /// File type filter (--type)
 #[test]
 fn test_type() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    te.assert_output(
+    env.assert_output(
         &["--type", "f"],
-        "a.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/C.Foo2
-        one/two/three/d.foo",
+        "./a.foo
+         ./α β
+         ./one/b.foo
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three/d.foo",
     );
 
-    te.assert_output(
+    env.assert_output(
         &["--type", "d"],
-        "one
-        one/two
-        one/two/three
-        one/two/three/directory_foo",
+        "./one
+         ./one/two
+         ./one/two/three
+         ./one/two/three/directory_foo",
     );
 
-    te.assert_output(&["--type", "l"], "symlink");
-}
+    env.assert_output(&["--type", "l"], "./symlink");
 
-/// File extension (--extension)
-#[test]
-fn test_extension() {
-    let te = TestEnv::new();
-
-    te.assert_output(
-        &["--extension", "foo"],
-        "a.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/three/d.foo",
-    );
-
-    te.assert_output(
-        &["--extension", ".foo"],
-        "a.foo
-        one/b.foo
-        one/two/c.foo
-        one/two/three/d.foo",
-    );
-
-    te.assert_output(&["--extension", "foo2"], "one/two/C.Foo2");
+    env.assert_output(&["--type", "x"], "./a.foo");
 }
 
 /// Symlinks misc
 #[test]
 fn test_symlink() {
-    let te = TestEnv::new();
+    let env = TestEnv::new();
 
-    let abs_path = get_absolute_root_path(&te);
+    let abs_path = get_test_root(&env);
 
     // From: http://pubs.opengroup.org/onlinepubs/9699919799/functions/getcwd.html
     // The getcwd() function shall place an absolute pathname of the current working directory in
@@ -461,80 +464,133 @@ fn test_symlink() {
     // 2. On Unix, symlinks are resolved immediately as encountered.
 
     let parent_parent = if cfg!(windows) { ".." } else { "../.." };
-    te.assert_output_subdirectory(
+    env.assert_output_subdirectory(
         "symlink",
-        &["", &parent_parent],
+        &[parent_parent],
         &format!(
             "{dir}/a.foo
-            {dir}/one
-            {dir}/one/b.foo
-            {dir}/one/two
-            {dir}/one/two/c.foo
-            {dir}/one/two/C.Foo2
-            {dir}/one/two/three
-            {dir}/one/two/three/d.foo
-            {dir}/one/two/three/directory_foo
-            {dir}/symlink",
-            dir = &parent_parent
+             {dir}/α β
+             {dir}/one
+             {dir}/one/b.foo
+             {dir}/one/two
+             {dir}/one/two/C.Foo2
+             {dir}/one/two/c.foo
+             {dir}/one/two/three
+             {dir}/one/two/three/d.foo
+             {dir}/one/two/three/directory_foo
+             {dir}/symlink",
+            dir = parent_parent
         ),
     );
 
-    te.assert_output_subdirectory(
+    env.assert_output_subdirectory(
         "symlink",
         &["--absolute-path"],
         &format!(
-            "{abs_path}/{dir}/c.foo
-            {abs_path}/{dir}/C.Foo2
-            {abs_path}/{dir}/three
-            {abs_path}/{dir}/three/d.foo
-            {abs_path}/{dir}/three/directory_foo",
+            "{abs_path}/{dir}/C.Foo2
+             {abs_path}/{dir}/c.foo
+             {abs_path}/{dir}/three
+             {abs_path}/{dir}/three/d.foo
+             {abs_path}/{dir}/three/directory_foo",
             dir = if cfg!(windows) { "symlink" } else { "one/two" },
-            abs_path = &abs_path
+            abs_path = abs_path
         ),
     );
 
-    te.assert_output(
-        &["", &format!("{abs_path}/symlink", abs_path = abs_path)],
+    env.assert_output(
+        &[&format!("{abs_path}/symlink", abs_path = abs_path)],
         &format!(
-            "{abs_path}/symlink/c.foo
-            {abs_path}/symlink/C.Foo2
-            {abs_path}/symlink/three
-            {abs_path}/symlink/three/d.foo
-            {abs_path}/symlink/three/directory_foo",
-            abs_path = &abs_path
+            "{abs_path}/symlink/C.Foo2
+             {abs_path}/symlink/c.foo
+             {abs_path}/symlink/three
+             {abs_path}/symlink/three/d.foo
+             {abs_path}/symlink/three/directory_foo",
+            abs_path = abs_path
         ),
     );
 
-    let root = te.system_root();
+    let root = env.system_root();
     let prefix = escape(&root.to_string_lossy());
 
-    te.assert_output_subdirectory(
+    env.assert_output_subdirectory(
         "symlink",
         &[
-            "--absolute-path",
-            "--full-path",
+            ".",
             &format!("^{prefix}.*three", prefix = prefix),
+            "--full-path",
+            "--absolute-path",
         ],
         &format!(
             "{abs_path}/{dir}/three
-            {abs_path}/{dir}/three/d.foo
-            {abs_path}/{dir}/three/directory_foo",
+             {abs_path}/{dir}/three/d.foo
+             {abs_path}/{dir}/three/directory_foo",
             dir = if cfg!(windows) { "symlink" } else { "one/two" },
+            abs_path = abs_path
+        ),
+    );
+
+    env.assert_output(
+        &[
+            &format!("{abs_path}/symlink", abs_path = abs_path),
+            &format!("^{prefix}.*symlink.*three", prefix = prefix),
+            "--full-path",
+        ],
+        &format!(
+            "{abs_path}/symlink/three
+             {abs_path}/symlink/three/d.foo
+             {abs_path}/symlink/three/directory_foo",
+            abs_path = abs_path
+        ),
+    );
+}
+
+/// Shell script execution (--exec)
+#[test]
+fn test_exec() {
+    let env = TestEnv::new();
+
+    let abs_path = get_test_root(&env);
+
+    env.assert_output(
+        &[".", "foo", "--absolute-path", "--exec", "printf", "%s\\n"],
+        &format!(
+            "{abs_path}/a.foo
+             {abs_path}/one/b.foo
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo",
             abs_path = &abs_path
         ),
     );
 
-    te.assert_output(
+    env.assert_output(
         &[
-            "--full-path",
-            &format!("^{prefix}.*symlink.*three", prefix = prefix),
-            &format!("{abs_path}/symlink", abs_path = abs_path),
+            ".",
+            "foo",
+            "--exec",
+            "printf",
+            "%s\\n",
+            ";",
+            "--absolute-path",
         ],
         &format!(
-            "{abs_path}/symlink/three
-            {abs_path}/symlink/three/d.foo
-            {abs_path}/symlink/three/directory_foo",
+            "{abs_path}/a.foo
+             {abs_path}/one/b.foo
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo",
             abs_path = &abs_path
         ),
     );
+
+    env.assert_output(
+        &[".", "foo", "--exec", "printf", "%s\\n", "{}"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+
+    env.assert_output(&[".", "α β", "--exec", "printf", "%s.%s\\n"], "./α β.");
 }

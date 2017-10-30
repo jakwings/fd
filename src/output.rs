@@ -1,121 +1,128 @@
-// Copyright (c) 2017 fd developers
-// Licensed under the Apache License, Version 2.0
-// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0>
-// or the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-// at your option. All files in the project carrying such
-// notice may not be copied, modified, or distributed except
-// according to those terms.
-
-use internal::FdOptions;
-use lscolors::LsColors;
-
-use std::{fs, process};
 use std::io::{self, Write};
-use std::ops::Deref;
-use std::path::{self, Path, PathBuf, Component};
-#[cfg(any(unix, target_os = "redox"))]
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::ffi::OsStrExt;
+use std::path::{self, Path, PathBuf};
+use std::path::Component::{Prefix, RootDir};
+use std::process::exit;
+use std::sync::Arc;
+use std::sync::atomic::{self, AtomicBool};
 
-use ansi_term;
+use super::ansi_term::Style;
+use super::nix::sys::signal::Signal::SIGINT;
 
-pub fn print_entry(entry: &PathBuf, config: &FdOptions) {
-    let path = entry.strip_prefix(".").unwrap_or(entry);
+use super::fshelper::{is_executable, is_symlink};
+use super::internal::AppOptions;
+use super::lscolors::LsColors;
 
-    let r = if let Some(ref ls_colors) = config.ls_colors {
-        print_entry_colorized(path, config, ls_colors)
+pub fn print_entry(entry: &Path, config: &AppOptions, quitting: &Arc<AtomicBool>) {
+    let result = if let Some(ref ls_colors) = config.ls_colors {
+        print_entry_colorized(entry, config, ls_colors, quitting)
     } else {
-        print_entry_uncolorized(path, config)
+        print_entry_uncolorized(entry, config)
     };
 
-    if r.is_err() {
-        // Probably a broken pipe. Exit gracefully.
-        process::exit(0);
+    // Probably a broken pipe. Exit gracefully.
+    if result.is_err() {
+        exit(0);
     }
 }
 
-fn print_entry_colorized(path: &Path, config: &FdOptions, ls_colors: &LsColors) -> io::Result<()> {
-    let default_style = ansi_term::Style::default();
+fn print_entry_colorized(
+    path: &Path,
+    config: &AppOptions,
+    ls_colors: &LsColors,
+    quitting: &Arc<AtomicBool>,
+) -> io::Result<()> {
+    let main_separator = path::MAIN_SEPARATOR.to_string();
 
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
-
-    // Separator to use before the current component.
-    let mut separator = String::new();
+    let default_style = Style::default();
+    let colorized_separator = ls_colors.directory.paint(main_separator.as_bytes());
 
     // Full path to the current component.
     let mut component_path = PathBuf::new();
+    let mut need_separator = false;
+    let mut buffer = Vec::new();
 
     // Traverse the path and colorize each component
     for component in path.components() {
-        let comp_str = component.as_os_str().to_string_lossy();
-        component_path.push(Path::new(comp_str.deref()));
+        let compo = component.as_os_str();
+        component_path.push(Path::new(compo));
 
-        let style = get_path_style(&component_path, ls_colors).unwrap_or(&default_style);
+        let style = get_path_style(&component_path, &ls_colors).unwrap_or(&default_style);
 
-        write!(handle, "{}{}", separator, style.paint(comp_str))?;
+        if need_separator {
+            colorized_separator.write_to(&mut buffer)?;
+        }
+        style.paint(compo.as_bytes()).write_to(&mut buffer)?;
 
-        // Determine separator to print before next component.
-        separator = match component {
-            // Prefix needs no separator, as it is always followed by RootDir.
-            Component::Prefix(_) => String::new(),
-            // RootDir is already a separator.
-            Component::RootDir => String::new(),
-            // Everything else uses a separator that is painted the same way as the component.
-            _ => style.paint(path::MAIN_SEPARATOR.to_string()).to_string(),
+        // assigns later because RootDir (MAIN_SEPARATOR) could have been printed before
+        need_separator = match component {
+            Prefix(_) | RootDir => false,
+            _ => true,
         };
     }
 
-    if config.null_separator {
-        write!(handle, "\0")
+    if config.null_terminator {
+        buffer.push(b'\0');
     } else {
-        writeln!(handle, "")
+        buffer.push(b'\n');
+    };
+
+    // SIGINT: Exit before or after colorized output is completely written out.
+    if quitting.load(atomic::Ordering::Relaxed) {
+        // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
+        // XXX: https://github.com/rust-lang/rust/issues/33417
+        let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
+        exit(0x80 + signum);
     }
+
+    io::stdout().write_all(&buffer.into_boxed_slice())
 }
 
-fn print_entry_uncolorized(path: &Path, config: &FdOptions) -> io::Result<()> {
-    let separator = if config.null_separator { "\0" } else { "\n" };
+fn print_entry_uncolorized(path: &Path, config: &AppOptions) -> io::Result<()> {
+    let mut buffer = Vec::new();
 
-    let path_str = path.to_string_lossy();
-    write!(&mut io::stdout(), "{}{}", path_str, separator)
+    buffer.write(&path.as_os_str().as_bytes())?;
+
+    if config.null_terminator {
+        buffer.push(b'\0');
+    } else {
+        buffer.push(b'\n');
+    }
+
+    io::stdout().write_all(&buffer.into_boxed_slice())
 }
 
-fn get_path_style<'a>(path: &Path, ls_colors: &'a LsColors) -> Option<&'a ansi_term::Style> {
-    if path.symlink_metadata()
-        .map(|md| md.file_type().is_symlink())
-        .unwrap_or(false)
-    {
-        return Some(&ls_colors.symlink);
+fn get_path_style<'a>(path: &Path, ls_colors: &'a LsColors) -> Option<&'a Style> {
+    if is_symlink(path) {
+        return if path.exists() {
+            Some(&ls_colors.symlink)
+        } else {
+            Some(&ls_colors.inexistent)
+        };
+    }
+
+    if path.is_dir() {
+        return Some(&ls_colors.directory);
     }
 
     let metadata = path.metadata();
-
-    if metadata.as_ref().map(|md| md.is_dir()).unwrap_or(false) {
-        Some(&ls_colors.directory)
-    } else if metadata.map(|md| is_executable(&md)).unwrap_or(false) {
-        Some(&ls_colors.executable)
-    } else if let Some(filename_style) =
-        path.file_name().and_then(|n| n.to_str()).and_then(|n| {
-            ls_colors.filenames.get(n)
-        })
-    {
-        Some(filename_style)
-    } else if let Some(extension_style) =
-        path.extension().and_then(|e| e.to_str()).and_then(|e| {
-            ls_colors.extensions.get(e)
-        })
-    {
-        Some(extension_style)
-    } else {
-        None
+    if metadata.map(|meta| is_executable(&meta)).unwrap_or(false) {
+        return Some(&ls_colors.executable);
     }
-}
 
-#[cfg(any(unix, target_os = "redox"))]
-fn is_executable(md: &fs::Metadata) -> bool {
-    md.permissions().mode() & 0o111 != 0
-}
+    let filename_style = path.file_name().and_then(
+        |name| ls_colors.filenames.get(name),
+    );
+    if filename_style.is_some() {
+        return filename_style;
+    }
 
-#[cfg(windows)]
-fn is_executable(_: &fs::Metadata) -> bool {
-    false
+    let extension_style = path.extension().and_then(
+        |ext| ls_colors.extensions.get(ext),
+    );
+    if extension_style.is_some() {
+        return extension_style;
+    }
+
+    None
 }

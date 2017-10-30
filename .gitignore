@@ -1,2 +1,3 @@
-target/
-**/*.rs.bk
+/target
+/shell_completion
+*.rs.bk

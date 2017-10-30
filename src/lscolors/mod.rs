@@ -1,21 +1,15 @@
-// Copyright (c) 2017 fd developers
-// Licensed under the Apache License, Version 2.0
-// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0>
-// or the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-// at your option. All files in the project carrying such
-// notice may not be copied, modified, or distributed except
-// according to those terms.
-
 /// A parser for the `LS_COLORS` environment variable.
 
 use std::collections::HashMap;
-use ansi_term::{Colour, Style};
+use std::ffi::OsString;
+
+use super::ansi_term::{Colour, Style};
 
 /// Maps file extensions to ANSI colors / styles.
-pub type ExtensionStyles = HashMap<String, Style>;
+pub type ExtensionStyles = HashMap<OsString, Style>;
 
 /// Maps filenames to ANSI colors / styles.
-pub type FilenameStyles = HashMap<String, Style>;
+pub type FilenameStyles = HashMap<OsString, Style>;
 
 const LS_CODES: &[&str] = &[
     "no",
@@ -69,6 +63,9 @@ pub struct LsColors {
     /// ANSI style for executable files.
     pub executable: Style,
 
+    /// ANSI style for symlinks to non-existent files.
+    pub inexistent: Style,
+
     /// A map that defines ANSI styles for different file extensions.
     pub extensions: ExtensionStyles,
 
@@ -81,8 +78,9 @@ impl Default for LsColors {
     fn default() -> LsColors {
         LsColors {
             directory: Colour::Blue.bold(),
-            symlink: Colour::Cyan.normal(),
-            executable: Colour::Red.bold(),
+            symlink: Colour::Cyan.bold(),
+            executable: Colour::Green.bold(),
+            inexistent: Colour::Red.bold(),
             extensions: HashMap::new(),
             filenames: HashMap::new(),
         }
@@ -177,10 +175,10 @@ impl LsColors {
                         }
                     } else if pattern.starts_with("*.") {
                         let extension = String::from(pattern).split_off(2);
-                        self.extensions.insert(extension, style);
+                        self.extensions.insert(OsString::from(extension), style);
                     } else if pattern.starts_with('*') {
                         let filename = String::from(pattern).split_off(1);
-                        self.filenames.insert(filename, style);
+                        self.filenames.insert(OsString::from(filename), style);
                     } else {
                         // Unknown/corrupt pattern
                         return;
@@ -258,9 +256,12 @@ fn test_from_string() {
 
     assert_eq!(Colour::Blue.italic(), result.directory);
     assert_eq!(Colour::Cyan.bold(), result.symlink);
-    assert_eq!(Some(&Colour::Purple.bold()), result.extensions.get("foo"));
+    assert_eq!(
+        Some(&Colour::Purple.bold()),
+        result.extensions.get(&OsString::from("foo"))
+    );
     assert_eq!(
         Some(&Colour::Yellow.normal()),
-        result.filenames.get("README")
+        result.filenames.get(&OsString::from("README"))
     );
 }

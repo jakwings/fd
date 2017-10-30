@@ -1,291 +1,134 @@
-# fd
-[![Build Status](https://travis-ci.org/sharkdp/fd.svg?branch=master)](https://travis-ci.org/sharkdp/fd)
-[![Build status](https://ci.appveyor.com/api/projects/status/21c4p5fwggc5gy3j?svg=true)](https://ci.appveyor.com/project/sharkdp/fd)
-[![Version info](https://img.shields.io/crates/v/fd-find.svg)](https://crates.io/crates/fd-find)
+# ff — Find Files
 
-*fd* is a simple, fast and user-friendly alternative to
-[*find*](https://www.gnu.org/software/findutils/).
+[![Build Status](https://travis-ci.org/jakwings/ff-find.svg?branch=master)](https://travis-ci.org/jakwings/ff-find)
+[![Version info](https://img.shields.io/crates/v/ff-find.svg)](https://crates.io/crates/ff-find)
 
-While it does not seek to mirror all of *find*'s powerful functionality, it provides sensible
-(opinionated) defaults for [80%](https://en.wikipedia.org/wiki/Pareto_principle) of the use cases.
+ff: Just my own fork of [fd] with many incompatible changes. (unstable)
 
-## Features
-* Convenient syntax: `fd PATTERN` instead of `find -iname '*PATTERN*'`.
-* Colorized terminal output (similar to *ls*).
-* It's *fast* (see [benchmarks](#benchmark) below).
-* Smart case: the search is case-insensitive by default. It switches to
-  case-sensitive if the pattern contains an uppercase
-  character[\*](http://vimdoc.sourceforge.net/htmldoc/options.html#'smartcase').
-* Ignores hidden directories and files, by default.
-* Ignores patterns from your `.gitignore`, by default.
-* Regular expressions.
-* Unicode-awareness.
-* The command name is *50%* shorter[\*](https://github.com/ggreer/the_silver_searcher) than
-  `find` :-).
-* Parallel command execution with a syntax similar to GNU Parallel.
+[fd]: https://github.com/sharkdp/fd/tree/7ecb6239504dff9eb9e9359521ece6744ef04f67
 
-## Demo
+## Installation
 
-![Demo](http://i.imgur.com/kTMFSVU.gif)
-
-## Benchmark
-Let's search my home folder for files that end in `[0-9].jpg`. It contains ~150.000
-subdirectories and about a million files. For averaging and statistical analysis, I'm using
-[bench](https://github.com/Gabriel439/bench). All benchmarks are performed for a "warm
-cache". Results for a cold cache are similar.
-
-Let's start with `find`:
 ```
-find ~ -iregex '.*[0-9]\.jpg$'
-
-time                 6.265 s    (6.127 s .. NaN s)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 6.162 s    (6.140 s .. 6.181 s)
-std dev              31.73 ms   (0.0 s .. 33.48 ms)
+cargo install ff-find
 ```
 
-`find` is much faster if it does not need to perform a regular-expression search:
+
+## Usage
+
 ```
-find ~ -iname '*[0-9].jpg'
+ff 0.1.0
 
-time                 2.866 s    (2.754 s .. 2.964 s)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 2.860 s    (2.834 s .. 2.875 s)
-std dev              23.11 ms   (0.0 s .. 25.09 ms)
-```
-
-Now let's try the same for `fd`. Note that `fd` *always* performs a regular expression
-search. The options `--hidden` and `--no-ignore` are needed for a fair comparison,
-otherwise `fd` does not have to traverse hidden folders and ignored paths (see below):
-```
-fd --hidden --no-ignore '.*[0-9]\.jpg$' ~
-
-time                 892.6 ms   (839.0 ms .. 915.4 ms)
-                     0.999 R²   (0.997 R² .. 1.000 R²)
-mean                 871.2 ms   (857.9 ms .. 881.3 ms)
-std dev              15.50 ms   (0.0 s .. 17.49 ms)
-```
-For this particular example, `fd` is approximately seven times faster than `find -iregex`
-and about three times faster than `find -iname`. By the way, both tools found the exact
-same 14030 files :smile:.
-
-Finally, let's run `fd` without `--hidden` and `--no-ignore` (this can lead to different
-search results, of course):
-```
-fd '[0-9]\.jpg$' ~
-
-time                 159.5 ms   (155.8 ms .. 165.3 ms)
-                     0.999 R²   (0.996 R² .. 1.000 R²)
-mean                 158.7 ms   (156.5 ms .. 161.6 ms)
-std dev              3.263 ms   (2.401 ms .. 4.298 ms)
-```
-
-**Note**: This is *one particular* benchmark on *one particular* machine. While I have
-performed quite a lot of different tests (and found consistent results), things might
-be different for you! I encourage everyone to try it out on their own.
-
-Concerning *fd*'s speed, the main credit goes to the `regex` and `ignore` crates that are also used
-in [ripgrep](https://github.com/BurntSushi/ripgrep) (check it out!).
-
-## Colorized output
-`fd` can colorize files by extension, just like `ls`. In order for this to work, the environment
-variable [`LS_COLORS`](https://linux.die.net/man/5/dir_colors) has to be set. Typically, the value
-of this variable is set by the `dircolors` command which provides a convenient configuration format
-to define colors for different file formats.
-On most distributions, `LS_COLORS` should be set already. If you are looking for alternative, more
-complete (and more colorful) variants, see
-[here](https://github.com/seebi/dircolors-solarized) or
-[here](https://github.com/trapd00r/LS_COLORS).
-
-## Parallel command execution
-If the `-x`/`--exec` option is specified alongside a command template, a job pool will be created
-for executing commands in parallel for each discovered path as the input. The syntax for generating
-commands is similar to that of GNU Parallel:
-
-- `{}`: A placeholder token that will be replaced with the path of the search result
-  (`documents/images/party.jpg`).
-- `{.}`: Like `{}`, but without the file extension (`documents/images/party`).
-- `{/}`: A placeholder that will be replaced by the basename of the search result (`party.jpg`).
-- `{//}`: Uses the parent of the discovered path (`documents/images`).
-- `{/.}`: Uses the basename, with the extension removed (`party`).
-
-``` bash
-# Convert all jpg files to png files
-fd -e jpg -x 'convert "{}" "{.}.png"'
-
-# Unpack all zip files (if no placeholder is given, the path is appended):
-fd -e zip -x unzip
-
-# Convert all flac files into opus files:
-fd -e flac -x 'ffmpeg -i "{}" -c:a libopus "{.}.opus"'
-```
-
-## Install
-With Rust's package manager [cargo](https://github.com/rust-lang/cargo), you can install *fd* via:
-```
-cargo install fd-find
-```
-Note that rust version *1.16.0* or later is required.
-The release page of this repository also includes precompiled binaries for Linux.
-
-On **macOS**, you can use [Homebrew](http://braumeister.org/formula/fd):
-```
-brew install fd
-```
-
-On **Arch Linux**, you can install the package from the official repos:
-```
-pacman -S fd-rs
-```
-
-On **NixOS**, or any Linux distro you can use [Nix](https://nixos.org/nix/):
-```
-nix-env -i fd
-```
-
-On **Windows**, you can download the pre-built binaries from the [Release page](https://github.com/sharkdp/fd/releases).
-
-## Development
-```bash
-git clone https://github.com/sharkdp/fd
-
-# Build
-cd fd
-cargo build
-
-# Run unit tests and integration tests
-cargo test
-
-# Install
-cargo install
-```
-
-## Command-line options
-```
 USAGE:
-    fd [FLAGS/OPTIONS] [<pattern>] [<path>]
-
-FLAGS:
-    -H, --hidden            Search hidden files and directories
-    -I, --no-ignore         Do not respect .(git)ignore files
-    -s, --case-sensitive    Case-sensitive search (default: smart case)
-    -i, --ignore-case       Case-insensitive search (default: smart case)
-    -a, --absolute-path     Show absolute instead of relative paths
-    -L, --follow            Follow symbolic links
-    -p, --full-path         Search full path (default: file-/dirname only)
-    -0, --print0            Separate results by the null character
-    -h, --help              Prints help information
-    -V, --version           Prints version information
+    ff [OPTIONS] [DIRECTORY] [PATTERN]
 
 OPTIONS:
-    -d, --max-depth <depth>    Set maximum search depth (default: none)
-    -t, --type <filetype>      Filter by type: f(ile), d(irectory), (sym)l(ink)
-    -e, --extension <ext>      Filter by file extension
-    -c, --color <when>         When to use colors: never, *auto*, always
-    -j, --threads <num>        Set number of threads to use for searching & executing
-    -x, --exec <cmd>           Execute the given command for each search result
+    -g, --glob
+            Match the whole file path with a glob pattern.
+
+    -r, --regex
+            The pattern is a regex pattern. It can match part of the file path.
+
+    -u, --unicode
+            Turn on Unicode support for regex patterns. Character classes are
+            not limited to ASCII. Only valid UTF-8 byte sequences can be matched
+            by the search pattern.
+
+    -i, --ignore-case
+            Perform a case-insensitive search. This overrides --case-sensitive.
+
+    -s, --case-sensitive
+            Perform a case-sensitive search. This overrides --ignore-case.
+
+    -p, --full-path
+            Match the absolute path instead of the filename or directory name.
+
+    -L, --follow
+            Do not take symlinks as normal files and traverse the symlinked
+            directories.
+
+    -0, --print0
+            Each search result is terminated with NUL instead of LF when
+            printed.
+
+    -A, --absolute-path
+            Relative paths for output are transformed into absolute paths.
+
+    -a, --all
+            All files and directories are searched. By default, files and
+            directories of which the names start with a dot "." are ignored in
+            the search.
+
+    -I, --no-ignore
+            Show search results from files and directories that would otherwise
+            be ignored by '.*ignore' files.
+
+    -t, --type <filetype>
+            Filter the search by type:
+                directory or d: directories
+                     file or f: regular files
+                  symlink or l: symbolic links
+               executable or x: executable regular files
+
+    -d, --max-depth <max-depth>
+            Limit the directory traversal to a given depth. 0 means unlimited.
+
+    -c, --color <when>
+            Declare when to use color for the pattern match output:
+                  auto: use colors for interactive console [default]
+                 never: do not use colorized output
+                always: always use colorized output
+
+    -j, --threads <number>
+            The number of threads to use for searching & command execution.
+            [default: number of available CPU cores]
+
+        --max-buffer-time <max-buffer-time>
+            The amount of time for the search results to be buffered and sorted
+            before streaming.
+
+    -x, --exec <program [arg]... [;]>
+            Run the given command for each search result, which can be
+            represented by a pair of braces {} in the command. If the command
+            does not contain any {}, then a {} will be appended as an argument
+            to the program. A single semicolon ; will terminate the argument
+            list.
+
+    -h, --help
+            Prints help information. Use --help for more details.
+
+    -V, --version
+            Prints version information
+
 
 ARGS:
-    <pattern>    the search pattern, a regular expression (optional)
-    <path>       the root directory for the filesystem search (optional)
+    <DIRECTORY>
+            The directory where the filesystem search is rooted (optional). If
+            omitted, search the current working directory.
+
+    <PATTERN>
+            The search pattern, a regular expression. (optional)
 ```
 
-## Tutorial
 
-First, to get an overview of all available command line options, you can either run
-`fd -h` for a concise help message (see above) or `fd --help` for a more detailed
-version.
+## References
 
-### Simple search
+*   Regex Syntax: https://docs.rs/regex/0.2.2/regex/#syntax
+*   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
 
-*fd* is designed to find entries in your filesystem. The most basic search you can perform is to
-run *fd* with a single argument: the search pattern. For example, assume that you want to find an
-old script of yours (the name included `netflix`):
-``` bash
-> fd netfl
-Software/python/imdb-ratings/netflix-details.py
-```
-If called with just a single argument like this, *fd* searches the current directory recursively
-for any entries that *contain* the pattern `netfl`.
+Note that `ff` cannot enable Unicode support for glob patterns. Also, the
+nitty-gritty of supported syntax may change in the future. There are still some
+todos noted in the source code.
 
-### Regular expression search
 
-The search pattern is treated as a regular expression. Here, we search for entries that start
-with `x` and end with `rc`:
-``` bash
-> cd /etc
-> fd '^x.*rc$'
-X11/xinit/xinitrc
-X11/xinit/xserverrc
-```
+## License
 
-### Specifying the root directory
+Copyright (c) 2017 ff developers
+Copyright (c) 2017 fd developers
 
-If we want so search a specific directory, it can be given as a second argument to *fd*:
-``` bash
-> fd passwd /etc
-/etc/default/passwd
-/etc/pam.d/passwd
-/etc/passwd
-```
+Licensed under the [Apache License], Version 2.0 or the [MIT License], at your
+option.  All files in the project carrying such notice may not be copied,
+modified, or distributed except according to those terms.
 
-### Running *fd* without any arguments
-
-*fd* can be called with no arguments. This is very useful to get a quick overview of all entries
-in the current directory, recursively (similar to `ls -R`):
-``` bash
-> cd fd/tests
-> fd
-testenv
-testenv/mod.rs
-tests.rs
-```
-
-### Searching for a particular file extension
-
-Often, we are interested in all files of a particular type. This can be done with the `-e` (or
-`--extension`) option. Here, we search for all Markdown files in the fd repository:
-``` bash
-> cd fd
-> fd -e md
-CONTRIBUTING.md
-README.md
-```
-
-The `-e` option can be used in combination with a search pattern:
-``` bash
-> fd -e rs mod
-src/fshelper/mod.rs
-src/lscolors/mod.rs
-tests/testenv/mod.rs
-```
-
-### Hidden and ignored files
-By default, *fd* does not search hidden directories and does not show hidden files in the
-search results. To disable this behavior, we can use the `-H` (or `--hidden`) option:
-``` bash
-> fd pre-commit
-> fd -H pre-commit
-.git/hooks/pre-commit.sample
-```
-
-If we work in a directory that is a Git repository (or includes Git repositories), *fd* does not
-search folders (and does not show files) that match one of the `.gitignore` patterns. To disable
-this behavior, we can use the `-I` (or `--ignore`) option:
-``` bash
-> fd num_cpu
-> fd -I num_cpu
-target/debug/deps/libnum_cpus-f5ce7ef99006aa05.rlib
-```
-
-To really search *all* files and directories, simply combine the hidden and ignore features to show
-everything (`-HI`).
-
-### Using fd with `xargs` or `parallel`
-
-If we want to run a command on all search results, we can pipe the output to `xargs`:
-``` bash
-> fd -0 -e rs | xargs -0 wc -l
-```
-Here, the `-0` option tells *fd* to separate search results by the NULL character (instead of     .
-newlines) In the same way, the `-0` option of `xargs` tells it to read the input in this way      .
+[Apache License]: https://www.apache.org/licenses/LICENSE-2.0
+[MIT License]: https://opensource.org/licenses/MIT

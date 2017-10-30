@@ -86,12 +86,13 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
         }
         let mut open = false;
 
-        let bytes = iter.by_ref().take_while(|c| {
-            if c == &&b'{' {
-                open = true;
-            }
-            c != &&b'{'
-        }).cloned().collect();
+        let bytes = iter.by_ref()
+            .take_while(|c| {
+                open = c == &&b'{';
+                !open
+            })
+            .cloned()
+            .collect();
         buffer.push(OsString::from_vec(bytes));
 
         // TODO: {filename} {basename} {extension} {dirname}

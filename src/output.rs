@@ -7,10 +7,10 @@ use std::sync::Arc;
 use std::sync::atomic::{self, AtomicBool};
 
 use super::ansi_term::Style;
-use super::nix::sys::signal::Signal::SIGINT;
+use super::nix::sys::signal::Signal::{SIGINT, SIGPIPE};
 
 use super::fshelper::{is_executable, is_symlink};
-use super::internal::AppOptions;
+use super::internal::{AppOptions, error};
 use super::lscolors::LsColors;
 
 pub fn print_entry(entry: &Path, config: &AppOptions, quitting: &Arc<AtomicBool>) {
@@ -20,9 +20,13 @@ pub fn print_entry(entry: &Path, config: &AppOptions, quitting: &Arc<AtomicBool>
         print_entry_uncolorized(entry, config)
     };
 
-    // Probably a broken pipe. Exit gracefully.
-    if result.is_err() {
-        exit(0);
+    if let Err(err) = result {
+        if err.kind() == io::ErrorKind::BrokenPipe {
+            let signum: i32 = unsafe { ::std::mem::transmute(SIGPIPE) };
+            exit(0x80 + signum);
+        } else {
+            error(&err.to_string());
+        }
     }
 }
 

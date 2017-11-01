@@ -100,6 +100,7 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
             buffer.push(path.as_os_str());
             iter.next();
         } else if open {
+            // TODO: throw errors for broken and unrecognized {patterns}
             buffer.push("{");
         }
     }

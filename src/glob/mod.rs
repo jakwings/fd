@@ -7,13 +7,13 @@ use super::internal::error;
 
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
 //
-// TODO: Custom rules:
+// TODO: Make a new fork of globset? With a simpler rule set.
+// Custom rules:
 // 1. "\" removes special meaning of any single following character, then be discarded.
 // 2. No character class expression?
 // 3. Do not skip dot-files.
 // 4. Ignore system locales.
 //
-// TODO: Make a new fork of globset? With a simpler rule set.
 pub struct GlobBuilder {}
 
 impl GlobBuilder {
@@ -24,7 +24,7 @@ impl GlobBuilder {
         {
             Ok(glob) => {
                 // XXX: globset 0.2.1
-                // FIXME: how to enable Unicode support?
+                // TODO: How to enable Unicode support? Just rewrite the crate.
                 //let stub = "(?-u)";
                 //let mut pattern = glob.regex();
                 //if pattern.starts_with(stub) {

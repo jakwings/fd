@@ -220,7 +220,7 @@ fn get_help() -> HashMap<&'static str, Help> {
             "    directory or d: directories\n",
             "         file or f: regular files\n",
             "      symlink or l: symbolic links\n",
-            "   executable or x: executable regular files"
+            "   executable or x: executable files"
         )
     );
 

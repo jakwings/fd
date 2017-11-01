@@ -20,7 +20,8 @@ impl GlobBuilder {
     pub fn new(pattern: &str, search_full_path: bool) -> RegexBuilder {
         match globset::GlobBuilder::new(pattern)
             .literal_separator(search_full_path)
-            .build() {
+            .build()
+        {
             Ok(glob) => {
                 // XXX: globset 0.2.1
                 // FIXME: how to enable Unicode support?

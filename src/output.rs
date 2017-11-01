@@ -114,16 +114,14 @@ fn get_path_style<'a>(path: &Path, ls_colors: &'a LsColors) -> Option<&'a Style>
         return Some(&ls_colors.executable);
     }
 
-    let filename_style = path.file_name().and_then(
-        |name| ls_colors.filenames.get(name),
-    );
+    let filename_style = path.file_name()
+        .and_then(|name| ls_colors.filenames.get(name));
     if filename_style.is_some() {
         return filename_style;
     }
 
-    let extension_style = path.extension().and_then(
-        |ext| ls_colors.extensions.get(ext),
-    );
+    let extension_style = path.extension()
+        .and_then(|ext| ls_colors.extensions.get(ext));
     if extension_style.is_some() {
         return extension_style;
     }

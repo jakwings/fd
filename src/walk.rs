@@ -48,8 +48,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
     if config.ls_colors.is_some() {
         let atom = quitting.clone();
-        ctrlc::set_handler(move || { atom.store(true, atomic::Ordering::Relaxed); })
-            .expect("Error: cannot set Ctrl-C handler");
+        ctrlc::set_handler(move || {
+            atom.store(true, atomic::Ordering::Relaxed);
+        }).expect("Error: cannot set Ctrl-C handler");
     }
 
     let walker = WalkBuilder::new(root)
@@ -102,9 +103,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             let mut mode = ReceiverMode::Buffering;
 
             // Maximum time to wait before we start streaming to the console.
-            let max_buffer_time = rx_config.max_buffer_time.unwrap_or_else(
-                || time::Duration::from_millis(100),
-            );
+            let max_buffer_time = rx_config
+                .max_buffer_time
+                .unwrap_or_else(|| time::Duration::from_millis(100));
 
             for value in rx {
                 match mode {
@@ -193,11 +194,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             if config.match_full_path {
                 if let Ok(path_buf) = to_absolute_path(&entry_path) {
                     if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                        tx_thread.send(entry_path.to_owned()).unwrap_or_else(
-                            |err| {
-                                error(&err.to_string())
-                            },
-                        );
+                        tx_thread
+                            .send(entry_path.to_owned())
+                            .unwrap_or_else(|err| error(&err.to_string()));
                     }
                 } else {
                     error(&format!(
@@ -208,11 +207,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             } else {
                 if let Some(os_str) = entry_path.file_name() {
                     if pattern.is_match(os_str.as_bytes()) {
-                        tx_thread.send(entry_path.to_owned()).unwrap_or_else(
-                            |err| {
-                                error(&err.to_string())
-                            },
-                        );
+                        tx_thread
+                            .send(entry_path.to_owned())
+                            .unwrap_or_else(|err| error(&err.to_string()));
                     }
                 }
             }

@@ -31,9 +31,7 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
 
         let executable = fs::File::create(root.join("a.foo"))?;
         let perms = executable.metadata()?.permissions();
-        executable.set_permissions(
-            fs::Permissions::from_mode(perms.mode() | 0o111),
-        )?;
+        executable.set_permissions(fs::Permissions::from_mode(perms.mode() | 0o111))?;
 
         fs::File::create(root.join("one/b.foo"))?;
         fs::File::create(root.join("one/two/c.foo"))?;
@@ -46,9 +44,7 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
 
         unix::fs::symlink(root.join("one/two"), root.join("symlink"))?;
 
-        fs::File::create(root.join(".ignore"))?.write_all(
-            b"ignored.foo",
-        )?;
+        fs::File::create(root.join(".ignore"))?.write_all(b"ignored.foo")?;
     }
 
     Ok(temp_dir)

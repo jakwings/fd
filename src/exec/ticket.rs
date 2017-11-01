@@ -30,8 +30,8 @@ impl ExecTicket {
     /// and clearing the command's buffer when finished.
     #[cfg(target_os = "redox")]
     pub fn execute(&self) {
-        use std::process::Stdio;
         use std::io::Write;
+        use std::process::Stdio;
 
         self.exit_if_sigint();
 
@@ -63,8 +63,8 @@ impl ExecTicket {
     pub fn execute(&self) {
         use libc::{close, dup2, pipe, STDERR_FILENO, STDOUT_FILENO};
         use std::fs::File;
-        use std::os::unix::process::CommandExt;
         use std::os::unix::io::FromRawFd;
+        use std::os::unix::process::CommandExt;
 
         self.exit_if_sigint();
 

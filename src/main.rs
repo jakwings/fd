@@ -40,9 +40,8 @@ use self::walk::FileType;
 fn main() {
     let args = app::build().get_matches();
 
-    let pattern = args.value_of("PATTERN").unwrap_or_else(|| {
-        error("need a UTF-8 encoded pattern")
-    });
+    let pattern = args.value_of("PATTERN")
+        .unwrap_or_else(|| error("need a UTF-8 encoded pattern"));
 
     let current_dir = PathBuf::from(".");
     if !is_dir(&current_dir) {
@@ -52,8 +51,8 @@ fn main() {
     let mut root_dir = match args.value_of_os("DIRECTORY") {
         Some(path_str) => {
             let path = PathBuf::from(path_str);
-            if !path_str.is_empty() && path.is_relative() &&
-                !(path.starts_with(".") || path.starts_with(".."))
+            if !path_str.is_empty() && path.is_relative()
+                && !(path.starts_with(".") || path.starts_with(".."))
             {
                 PathBuf::from(".").join(path)
             } else {
@@ -73,19 +72,15 @@ fn main() {
     }
 
     let file_type = match args.value_of("file-type") {
-        Some("d") |
-        Some("directory") => FileType::Directory,
+        Some("d") | Some("directory") => FileType::Directory,
         Some("f") | Some("file") => FileType::Regular,
         Some("l") | Some("symlink") => FileType::SymLink,
-        Some("x") |
-        Some("executable") => FileType::Executable,
-        Some(_) | None => {
-            if let Some(sym) = args.value_of_os("file-type") {
-                error(&format!("unrecognizable file type {:?}", sym))
-            } else {
-                FileType::Any
-            }
-        }
+        Some("x") | Some("executable") => FileType::Executable,
+        Some(_) | None => if let Some(sym) = args.value_of_os("file-type") {
+            error(&format!("unrecognizable file type {:?}", sym))
+        } else {
+            FileType::Any
+        },
     };
 
     let max_depth = args.value_of("max-depth")
@@ -113,7 +108,11 @@ fn main() {
     let num_cpu = num_cpus::get();
     let num_thread = args.value_of("threads")
         .map(|num_str| match usize::from_str_radix(num_str, 10) {
-            Ok(num) => if num > 0 { num } else { num_cpu },
+            Ok(num) => if num > 0 {
+                num
+            } else {
+                num_cpu
+            },
             Err(err) => int_error("threads", num_str, &err.to_string()),
         })
         .or_else(|| {
@@ -178,7 +177,8 @@ fn main() {
         .unicode(!config.use_glob && config.unicode)
         .case_insensitive(config.case_insensitive)
         .dot_matches_new_line(true)
-        .build() {
+        .build()
+    {
         Ok(re) => walk::scan(&root_dir, Arc::new(re), Arc::new(config)),
         Err(err) => error(&err.to_string()),
     }

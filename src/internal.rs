@@ -1,5 +1,5 @@
-use std::io::Write;
 use std::ffi::OsStr;
+use std::io::Write;
 use std::process;
 use std::time;
 

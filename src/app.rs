@@ -34,30 +34,34 @@ pub fn build() -> App<'static, 'static> {
     };
 
     App::new("ff")
-        .global_settings(
-            &[
-                AppSettings::AllowInvalidUtf8,
-                AppSettings::ArgsNegateSubcommands,
-                AppSettings::ColoredHelp,
-                AppSettings::DeriveDisplayOrder,
-                AppSettings::DontCollapseArgsInUsage,
-                AppSettings::HidePossibleValuesInHelp,
-                AppSettings::NextLineHelp,
-                AppSettings::UnifiedHelpMessage,
-                AppSettings::VersionlessSubcommands,
-            ],
-        )
+        .global_settings(&[
+            AppSettings::AllowInvalidUtf8,
+            AppSettings::ArgsNegateSubcommands,
+            AppSettings::ColoredHelp,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::DontCollapseArgsInUsage,
+            AppSettings::HidePossibleValuesInHelp,
+            AppSettings::NextLineHelp,
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::VersionlessSubcommands,
+        ])
         .unset_settings(&[AppSettings::StrictUtf8])
         .max_term_width(80)
         .version(crate_version!())
         .usage("ff [OPTIONS] [DIRECTORY] [PATTERN]")
         .help_message("Prints help information. Use --help for more details.")
-        .arg(arg("use-glob").long("glob").short("g").overrides_with(
-            "use-regex",
-        ))
-        .arg(arg("use-regex").long("regex").short("r").overrides_with(
-            "use-glob",
-        ))
+        .arg(
+            arg("use-glob")
+                .long("glob")
+                .short("g")
+                .overrides_with("use-regex"),
+        )
+        .arg(
+            arg("use-regex")
+                .long("regex")
+                .short("r")
+                .overrides_with("use-glob"),
+        )
         .arg(arg("unicode").long("unicode").short("u"))
         .arg(
             arg("ignore-case")
@@ -84,9 +88,12 @@ pub fn build() -> App<'static, 'static> {
                 .takes_value(true)
                 .value_name("filetype"),
         )
-        .arg(arg("max-depth").long("max-depth").short("d").takes_value(
-            true,
-        ))
+        .arg(
+            arg("max-depth")
+                .long("max-depth")
+                .short("d")
+                .takes_value(true),
+        )
         .arg(
             arg("color")
                 .long("color")

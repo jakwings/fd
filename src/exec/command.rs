@@ -80,10 +80,7 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
     let mut buffer = OsString::new();
     let mut iter = os_str.as_bytes().iter().peekable();
 
-    loop {
-        if iter.peek().is_none() {
-            break;
-        }
+    while iter.peek().is_some() {
         let mut open = false;
 
         let bytes = iter.by_ref()

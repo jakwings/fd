@@ -8,8 +8,17 @@ use super::ticket::ExecTicket;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExecCommand {
-    pub prog: OsString,
-    pub args: Vec<OsString>,
+    argv: Vec<OsString>,
+}
+
+impl ExecCommand {
+    pub fn prog(&self) -> &OsString {
+        &self.argv[0]
+    }
+
+    pub fn args(&self) -> &[OsString] {
+        &self.argv[1..]
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -48,13 +57,8 @@ impl ExecTemplate {
     }
 
     fn apply(&self, path: &Path) -> ExecCommand {
-        if let Some((head, tail)) = self.argv.split_first() {
-            let prog = clear_stubs(head, path);
-            let args = tail.iter().map(|arg| clear_stubs(arg, path)).collect();
-
-            ExecCommand { prog, args }
-        } else {
-            unreachable!("ExecTemplate is empty")
+        ExecCommand {
+            argv: self.argv.iter().map(|arg| clear_stubs(arg, path)).collect(),
         }
     }
 }
@@ -114,10 +118,6 @@ mod tests {
         ($($x:expr,)*) => (mkv![$(OsStr::new($x)),*]);
     }
 
-    fn mks(prog: &str) -> OsString {
-        OsString::from(prog)
-    }
-
     fn mkv(argv: &[&str]) -> Vec<OsString> {
         argv.to_vec()
             .iter()
@@ -142,10 +142,6 @@ mod tests {
     fn template_apply() {
         let template = ExecTemplate::new(&mkv!["cp", "{}", "{}.bak"]);
         let command = template.apply(&Path::new("foo"));
-        let expected = ExecCommand {
-            prog: mks("cp"),
-            args: mkv(&["foo", "foo.bak"]),
-        };
-        assert_eq!(command, expected);
+        assert_eq!(command.argv, mkv(&["cp", "foo", "foo.bak"]));
     }
 }

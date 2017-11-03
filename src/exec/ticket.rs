@@ -36,8 +36,8 @@ impl ExecTicket {
         self.exit_if_sigint();
 
         // Spawn a shell with the supplied command.
-        let cmd = Command::new(&self.command.prog)
-            .args(&self.command.args)
+        let cmd = Command::new(self.command.prog())
+            .args(self.command.args())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output();
@@ -55,7 +55,7 @@ impl ExecTicket {
                 let _ = stdout.lock().write_all(&output.stdout);
                 let _ = stderr.lock().write_all(&output.stderr);
             }
-            Err(err) => eprintln!("{} {:?}", err.description(), self.command.prog),
+            Err(err) => eprintln!("{} {:?}", err.description(), self.command.prog()),
         }
     }
 
@@ -79,8 +79,8 @@ impl ExecTicket {
         }
 
         // Spawn a shell with the supplied command.
-        let cmd = Command::new(&self.command.prog)
-            .args(&self.command.args)
+        let cmd = Command::new(self.command.prog())
+            .args(self.command.args())
             // Configure the pipes accordingly in the child.
             .before_exec(move || unsafe {
                 // Redirect the child's std{out,err} to the write ends of our pipe.
@@ -121,7 +121,7 @@ impl ExecTicket {
                 let _ = io::copy(&mut pout, &mut stdout.lock());
                 let _ = io::copy(&mut perr, &mut stderr.lock());
             }
-            Err(err) => eprintln!("{} {:?}", err.to_string(), self.command.prog),
+            Err(err) => eprintln!("{} {:?}", err.to_string(), self.command.prog()),
         }
     }
 

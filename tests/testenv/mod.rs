@@ -28,6 +28,7 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
         let root = temp_dir.path();
 
         fs::create_dir_all(root.join("one/two/three"))?;
+        fs::create_dir_all(root.join("one.two"))?;
 
         let executable = fs::File::create(root.join("a.foo"))?;
         let perms = executable.metadata()?.permissions();
@@ -100,7 +101,7 @@ fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
 }
 
 /// Normalize the output for comparison.
-fn normalize_output(s: &str, trim_left: bool) -> String {
+fn normalize_output(s: &str, trim_left: bool, sort: bool) -> String {
     // Split into lines and normalize separators.
     let text = s.replace('\0', "NULL\n");
     let mut lines = text.lines()
@@ -108,7 +109,9 @@ fn normalize_output(s: &str, trim_left: bool) -> String {
         .map(|line| if trim_left { line.trim_left() } else { line })
         .collect::<Vec<_>>();
 
-    lines.sort_by_key(|s| s.clone());
+    if sort {
+        lines.sort_unstable_by(|lhs, rhs| lhs.cmp(rhs));
+    }
 
     lines.join("\n")
 }
@@ -136,14 +139,15 @@ impl TestEnv {
     }
 
     /// Assert that calling *ff* with the specified arguments produces the expected output.
-    pub fn assert_output(&self, args: &[&str], expected: &str) {
-        self.assert_output_subdirectory(".", args, expected)
+    pub fn assert_output(&self, sort: bool, args: &[&str], expected: &str) {
+        self.assert_output_subdirectory(sort, ".", args, expected)
     }
 
     /// Assert that calling *ff* in the specified path under the root working directory,
     /// and with the specified arguments produces the expected output.
     pub fn assert_output_subdirectory<P: AsRef<Path>>(
         &self,
+        sort: bool,
         path: P,
         args: &[&str],
         expected: &str,
@@ -162,8 +166,8 @@ impl TestEnv {
         }
 
         // Normalize both expected and actual output.
-        let expected = normalize_output(expected, true);
-        let actual = normalize_output(&String::from_utf8_lossy(&output.stdout), false);
+        let expected = normalize_output(expected, true, sort);
+        let actual = normalize_output(&String::from_utf8_lossy(&output.stdout), false, sort);
 
         // Compare actual output to expected output.
         if expected != actual {

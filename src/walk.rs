@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -227,7 +226,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             .git_exclude(config.read_ignore)
             .follow_links(config.follow_symlink)
             .max_depth(config.max_depth)
-            .sort_by_file_name(OsStr::cmp)
+            .sort_by_file_name(|lhs, rhs| lhs.cmp(rhs))
             .threads(1)
             .build();
 

@@ -28,7 +28,6 @@ pub fn build() -> App<'static, 'static> {
             .help(help[name].short)
             .long_help(help[name].long)
             .hide_default_value(true)
-            .allow_hyphen_values(true)
             .empty_values(true)  // may imply .takes_value(true)
             .takes_value(false)
     };
@@ -119,6 +118,7 @@ pub fn build() -> App<'static, 'static> {
             arg("exec")
                 .long("exec")
                 .short("x")
+                .allow_hyphen_values(true)
                 .value_name("program [arg]... [;]")
                 .value_terminator(";")
                 .min_values(1),

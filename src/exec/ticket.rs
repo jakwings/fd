@@ -55,7 +55,7 @@ impl ExecTicket {
                 let _ = stdout.lock().write_all(&output.stdout);
                 let _ = stderr.lock().write_all(&output.stderr);
             }
-            Err(err) => eprintln!("{} {:?}", err.description(), self.command.prog()),
+            Err(err) => eprintln!("{} {:?}", err.to_string(), self.command.prog()),
         }
     }
 

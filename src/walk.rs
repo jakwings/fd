@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -52,18 +53,6 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             atom.store(true, atomic::Ordering::Relaxed);
         }).expect("Error: cannot set Ctrl-C handler");
     }
-
-    let walker = WalkBuilder::new(root)
-        .hidden(!config.dot_files)
-        .ignore(config.read_ignore)
-        .git_ignore(config.read_ignore)
-        .parents(config.read_ignore)
-        .git_global(config.read_ignore)
-        .git_exclude(config.read_ignore)
-        .follow_links(config.follow_symlink)
-        .max_depth(config.max_depth)
-        .threads(threads)
-        .build_parallel();
 
     // Spawn the thread that receives all results through the channel.
     let rx_config = Arc::clone(&config);
@@ -141,22 +130,117 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         }
     });
 
-    // Spawn the sender threads.
-    walker.run(|| {
-        let config = Arc::clone(&config);
-        let pattern = Arc::clone(&pattern);
-        let tx_thread = tx.clone();
-        let root = root.to_owned();
+    if !config.sort_path {
+        let walker = WalkBuilder::new(root)
+            .hidden(!config.dot_files)
+            .ignore(config.read_ignore)
+            .git_ignore(config.read_ignore)
+            .parents(config.read_ignore)
+            .git_global(config.read_ignore)
+            .git_exclude(config.read_ignore)
+            .follow_links(config.follow_symlink)
+            .max_depth(config.max_depth)
+            .threads(threads)
+            .build_parallel();
 
-        Box::new(move |entry_o| {
+        // Spawn the sender threads.
+        walker.run(|| {
+            let config = Arc::clone(&config);
+            let pattern = Arc::clone(&pattern);
+            let tx = tx.clone();
+            let root = root.to_owned();
+
+            Box::new(move |entry_o| {
+                let entry = match entry_o {
+                    Ok(e) => e,
+                    Err(_) => return ignore::WalkState::Continue,
+                };
+                let entry_path = entry.path();
+
+                if entry_path == root {
+                    return ignore::WalkState::Continue;
+                }
+
+                if config.file_type != FileType::Any {
+                    if let Some(file_type) = entry.file_type() {
+                        let to_skip = match config.file_type {
+                            FileType::Any => false,
+                            FileType::Directory => !file_type.is_dir(),
+                            FileType::Regular => !file_type.is_file(),
+                            FileType::SymLink => !file_type.is_symlink(),
+                            FileType::Executable => {
+                                // entry_path.metadata() always follows symlinks
+                                if let Ok(meta) = entry_path.metadata() {
+                                    meta.is_dir() || !is_executable(&meta)
+                                } else if !file_type.is_symlink() {
+                                    error(&format!(
+                                        "cannot get metadata of {:?}",
+                                        entry_path.as_os_str()
+                                    ))
+                                } else {
+                                    false
+                                }
+                            }
+                        };
+                        if to_skip {
+                            return ignore::WalkState::Continue;
+                        }
+                    } else {
+                        error(&format!(
+                            "cannot get file type of {:?}",
+                            entry_path.as_os_str()
+                        ));
+                    }
+                }
+
+                if config.match_full_path {
+                    if let Ok(path_buf) = to_absolute_path(&entry_path) {
+                        if pattern.is_match(path_buf.as_os_str().as_bytes()) {
+                            tx.send(entry_path.to_owned())
+                                .unwrap_or_else(|err| error(&err.to_string()));
+                        }
+                    } else {
+                        error(&format!(
+                            "cannot get full path of {:?}",
+                            entry_path.as_os_str()
+                        ));
+                    }
+                } else {
+                    if let Some(os_str) = entry_path.file_name() {
+                        if pattern.is_match(os_str.as_bytes()) {
+                            tx.send(entry_path.to_owned())
+                                .unwrap_or_else(|err| error(&err.to_string()));
+                        }
+                    }
+                }
+
+                ignore::WalkState::Continue
+            })
+        });
+    } else {
+        let walker = WalkBuilder::new(root)
+            .hidden(!config.dot_files)
+            .ignore(config.read_ignore)
+            .git_ignore(config.read_ignore)
+            .parents(config.read_ignore)
+            .git_global(config.read_ignore)
+            .git_exclude(config.read_ignore)
+            .follow_links(config.follow_symlink)
+            .max_depth(config.max_depth)
+            .sort_by_file_name(OsStr::cmp)
+            .threads(1)
+            .build();
+
+        // TODO: Dont' Repeat Yourself!
+        walker.for_each(|entry_o| {
             let entry = match entry_o {
                 Ok(e) => e,
-                Err(_) => return ignore::WalkState::Continue,
+                Err(_) => return,
             };
             let entry_path = entry.path();
 
             if entry_path == root {
-                return ignore::WalkState::Continue;
+                return;
             }
 
             if config.file_type != FileType::Any {
@@ -181,7 +265,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                         }
                     };
                     if to_skip {
-                        return ignore::WalkState::Continue;
+                        return;
                     }
                 } else {
                     error(&format!(
@@ -194,8 +278,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             if config.match_full_path {
                 if let Ok(path_buf) = to_absolute_path(&entry_path) {
                     if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                        tx_thread
-                            .send(entry_path.to_owned())
+                        tx.send(entry_path.to_owned())
                             .unwrap_or_else(|err| error(&err.to_string()));
                     }
                 } else {
@@ -207,16 +290,13 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             } else {
                 if let Some(os_str) = entry_path.file_name() {
                     if pattern.is_match(os_str.as_bytes()) {
-                        tx_thread
-                            .send(entry_path.to_owned())
+                        tx.send(entry_path.to_owned())
                             .unwrap_or_else(|err| error(&err.to_string()));
                     }
                 }
             }
-
-            ignore::WalkState::Continue
-        })
-    });
+        });
+    }
 
     // Drop the initial sender. If we don't do this, the receiver will block even
     // if all threads have finished, since there is still one sender around.

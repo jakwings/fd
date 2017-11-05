@@ -78,6 +78,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg("follow-symlink").long("follow").short("L"))
         .arg(arg("null_terminator").long("print0").short("0"))
         .arg(arg("absolute-path").long("absolute-path").short("A"))
+        .arg(arg("sort-path").long("sort-path").short("S"))
         .arg(arg("dot-files").long("all").short("a"))
         .arg(arg("no-ignore").long("no-ignore").short("I"))
         .arg(
@@ -193,6 +194,13 @@ fn get_help() -> HashMap<&'static str, Help> {
         "absolute-path",
         "Output absolute paths instead of relative paths.",
         "Relative paths for output are transformed into absolute paths."
+    );
+
+    doc!(
+        help,
+        "sort-path",
+        "Sort the results by pathname.",
+        "The search results will guarantee to be sorted by pathname before output."
     );
 
     doc!(

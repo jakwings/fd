@@ -415,6 +415,27 @@ fn test_absolute_path() {
     );
 }
 
+/// Sort paths (--sort-path)
+#[test]
+fn test_sort_path() {
+    let env = TestEnv::new();
+
+    env.assert_output(
+        &["--sort-path"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
+    );
+}
+
 /// File type filter (--type)
 #[test]
 fn test_type() {

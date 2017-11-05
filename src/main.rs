@@ -148,6 +148,7 @@ fn main() {
         use_glob: args.is_present("use-glob"),
         case_insensitive: args.is_present("ignore-case"),
         match_full_path: args.is_present("full-path"),
+        sort_path: args.is_present("sort-path"),
         dot_files: args.is_present("dot-files"),
         read_ignore: !args.is_present("no-ignore"),
         follow_symlink: args.is_present("follow-symlink"),

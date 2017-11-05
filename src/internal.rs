@@ -23,6 +23,9 @@ pub struct AppOptions {
     /// Whether the search results are absolute paths.
     pub absolute_path: bool,
 
+    /// Whether the search results are sorted by pathname.
+    pub sort_path: bool,
+
     /// Whether to include dot-files.
     pub dot_files: bool,
 

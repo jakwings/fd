@@ -1,6 +1,5 @@
 extern crate ansi_term;
 extern crate atty;
-#[macro_use(crate_version)]
 extern crate clap;
 extern crate ctrlc;
 extern crate globset;

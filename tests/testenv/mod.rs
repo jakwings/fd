@@ -11,16 +11,14 @@ extern crate tempdir;
 
 use self::tempdir::TempDir;
 
-/// Environment for the integration tests.
 pub struct TestEnv {
-    /// Temporary working directory.
+    // temporary working directory
     temp_dir: TempDir,
 
-    /// Path to the executable.
+    // path to the executable
     ff_exe: PathBuf,
 }
 
-/// Create the working directory and the test files.
 fn create_working_directory() -> Result<TempDir, io::Error> {
     let temp_dir = TempDir::new("ff-tests")?;
 
@@ -51,10 +49,9 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
     Ok(temp_dir)
 }
 
-/// Find the *ff* executable.
 fn find_ff_exe() -> PathBuf {
     // Tests exe is in target/debug/deps, the *ff* exe is in target/debug
-    let root = env::current_exe()
+    let dir = env::current_exe()
         .expect("tests executable")
         .parent()
         .expect("tests executable directory")
@@ -62,12 +59,9 @@ fn find_ff_exe() -> PathBuf {
         .expect("ff executable directory")
         .to_path_buf();
 
-    let exe_name = "ff";
-
-    root.join(exe_name)
+    dir.join("ff")
 }
 
-/// Format an error message for when *ff* did not exit successfully.
 fn format_exit_error(args: &[&str], output: &process::Output) -> String {
     format!(
         "`ff {}` did not exit successfully.\nstdout:\n---\n{}---\nstderr:\n---\n{}---",
@@ -77,9 +71,7 @@ fn format_exit_error(args: &[&str], output: &process::Output) -> String {
     )
 }
 
-/// Format an error message for when the output of *ff* did not match the expected output.
 fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
-    // Generate diff text.
     let diff_text = diff::lines(expected, actual)
         .into_iter()
         .map(|diff| match diff {
@@ -100,9 +92,7 @@ fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
     )
 }
 
-/// Normalize the output for comparison.
 fn normalize_output(s: &str, trim_left: bool, sort: bool) -> String {
-    // Split into lines and normalize separators.
     let text = s.replace('\0', "NULL\n");
     let mut lines = text.lines()
         .into_iter()
@@ -110,7 +100,7 @@ fn normalize_output(s: &str, trim_left: bool, sort: bool) -> String {
         .collect::<Vec<_>>();
 
     if sort {
-        lines.sort_unstable_by(|lhs, rhs| lhs.cmp(rhs));
+        lines.sort_unstable();
     }
 
     lines.join("\n")
@@ -127,24 +117,24 @@ impl TestEnv {
         }
     }
 
-    /// Get the root directory for the tests.
+    // Get the root directory for the tests.
     pub fn test_root(&self) -> PathBuf {
         self.temp_dir.path().to_path_buf()
     }
 
-    /// Get the root directory of the file system.
+    // Get the root directory of the file system.
     pub fn system_root(&self) -> PathBuf {
         let mut components = self.temp_dir.path().components();
         PathBuf::from(components.next().expect("root directory").as_os_str())
     }
 
-    /// Assert that calling *ff* with the specified arguments produces the expected output.
+    // Assert that calling *ff* with the specified arguments produces the expected output.
     pub fn assert_output(&self, sort: bool, args: &[&str], expected: &str) {
         self.assert_output_subdirectory(sort, ".", args, expected)
     }
 
-    /// Assert that calling *ff* in the specified path under the root working directory,
-    /// and with the specified arguments produces the expected output.
+    // Assert that calling *ff* in the specified path under the root working directory,
+    // and with the specified arguments produces the expected output.
     pub fn assert_output_subdirectory<P: AsRef<Path>>(
         &self,
         sort: bool,
@@ -152,24 +142,19 @@ impl TestEnv {
         args: &[&str],
         expected: &str,
     ) {
-        // Setup *ff* command.
         let mut cmd = process::Command::new(&self.ff_exe);
         cmd.current_dir(self.temp_dir.path().join(path));
         cmd.args(args);
 
-        // Run *ff*.
         let output = cmd.output().expect("ff output");
 
-        // Check for exit status.
         if !output.status.success() {
             panic!(format_exit_error(args, &output));
         }
 
-        // Normalize both expected and actual output.
         let expected = normalize_output(expected, true, sort);
         let actual = normalize_output(&String::from_utf8_lossy(&output.stdout), false, sort);
 
-        // Compare actual output to expected output.
         if expected != actual {
             panic!(format_output_error(args, &expected, &actual));
         }

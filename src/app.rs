@@ -46,7 +46,7 @@ pub fn build() -> App<'static, 'static> {
         ])
         .unset_settings(&[AppSettings::StrictUtf8])
         .max_term_width(80)
-        .version(crate_version!())
+        .version(env!("CARGO_PKG_VERSION"))
         .usage("ff [OPTIONS] [DIRECTORY] [PATTERN]")
         .help_message("Prints help information. Use --help for more details.")
         .arg(

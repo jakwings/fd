@@ -1,4 +1,3 @@
-#[macro_use(crate_version)]
 extern crate clap;
 
 use clap::Shell;

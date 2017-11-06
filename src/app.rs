@@ -14,12 +14,15 @@ macro_rules! doc {
     ($map:expr, $name:expr, $short:expr, $long:expr) => {
         $map.insert($name, Help {
             short: $short,
+            // use dirty hack to separate lines by an empty line
             long: concat!($long, "\n ")
         });
     };
 }
 
-// TODO upstream: Only show advanced options with the *long* flag --help.
+// TODO upstream:
+//     Only show advanced options with the *long* flag --help.
+//     https://github.com/kbknapp/clap-rs/issues/1064
 // TODO: --mount device (lstat.dev())
 pub fn build() -> App<'static, 'static> {
     let help = get_help();
@@ -92,7 +95,8 @@ pub fn build() -> App<'static, 'static> {
             arg("max-depth")
                 .long("max-depth")
                 .short("d")
-                .takes_value(true),
+                .takes_value(true)
+                .value_name("number"),
         )
         .arg(
             arg("color")
@@ -120,7 +124,7 @@ pub fn build() -> App<'static, 'static> {
                 .long("exec")
                 .short("x")
                 .allow_hyphen_values(true)
-                .value_name("program [arg]... [;]")
+                .value_name("program [argument]... [;]")
                 .value_terminator(";")
                 .min_values(1),
         )
@@ -128,7 +132,9 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg("PATTERN").default_value(""))
 }
 
-// TODO upstream: Remove trailing spaces.
+// TODO upstream:
+//     Remove trailing spaces in --help message.
+//     https://github.com/kbknapp/clap-rs/issues/1094
 fn get_help() -> HashMap<&'static str, Help> {
     let mut help = HashMap::new();
 

@@ -2,6 +2,7 @@ mod command;
 mod schedule;
 mod ticket;
 
+use super::nix::libc;
 use super::nix::sys::signal::Signal::SIGINT;
 
 use self::command::ExecCommand;

@@ -61,7 +61,7 @@ impl ExecTicket {
 
     #[cfg(all(unix, not(target_os = "redox")))]
     pub fn execute(&self) {
-        use libc::{close, dup2, pipe, STDERR_FILENO, STDOUT_FILENO};
+        use super::libc::{close, dup2, pipe, STDERR_FILENO, STDOUT_FILENO};
         use std::fs::File;
         use std::os::unix::io::FromRawFd;
         use std::os::unix::process::CommandExt;

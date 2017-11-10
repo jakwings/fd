@@ -163,6 +163,8 @@ fn main() {
     };
 
     let mut builder = if !config.use_glob {
+        let pattern = if pattern.is_empty() { &"^" } else { pattern };
+
         if config.unicode {
             RegexBuilder::new(pattern)
         } else {
@@ -172,8 +174,19 @@ fn main() {
                 .unwrap())
         }
     } else {
+        let pattern = if pattern.is_empty() {
+            if config.match_full_path {
+                &"**"
+            } else {
+                &"*"
+            }
+        } else {
+            pattern
+        };
+
         GlobBuilder::new(pattern, config.match_full_path)
     };
+
     match builder
         .unicode(!config.use_glob && config.unicode)
         .case_insensitive(config.case_insensitive)

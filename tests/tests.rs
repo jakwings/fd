@@ -153,6 +153,23 @@ fn test_glob_searches() {
 
     env.assert_output(
         true,
+        &["--glob"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
+    );
+
+    env.assert_output(
+        true,
         &["--glob", ".", "*.foo"],
         "./a.foo
          ./one/b.foo

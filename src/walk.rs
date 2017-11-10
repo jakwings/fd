@@ -16,14 +16,16 @@ use super::fshelper::{is_executable, to_absolute_path};
 use super::internal::{AppOptions, error};
 use super::output;
 
-/// The receiver thread can either be buffering results or directly streaming to the console.
-enum ReceiverMode {
-    /// Receiver is still buffering in order to sort the results, if the search finishes fast
-    /// enough.
-    Buffering,
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum BufferTime {
+    Duration, // End buffering mode after this duration.
+    Eternity, // Always buffer the search results.
+}
 
-    /// Receiver is directly printing results to the output.
-    Streaming,
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ReceiverMode {
+    Buffering(BufferTime), // Receiver is still buffering in order to sort the results.
+    Streaming,             // Receiver is directly printing search results to the output.
 }
 
 /// The type of file to search for.
@@ -96,43 +98,44 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             }
         } else {
             let start = time::Instant::now();
-
-            let mut buffer = vec![];
-
-            // Start in buffering mode
-            let mut mode = ReceiverMode::Buffering;
-
-            // Maximum time to wait before we start streaming to the console.
             let max_buffer_time = rx_config
                 .max_buffer_time
                 .unwrap_or_else(|| time::Duration::from_millis(100));
 
+            let mut buffer = vec![];
+            let mut mode = if rx_config.sort_path {
+                ReceiverMode::Buffering(BufferTime::Eternity)
+            } else {
+                ReceiverMode::Buffering(BufferTime::Duration)
+            };
+
             for value in rx {
                 match mode {
-                    ReceiverMode::Buffering => {
-                        buffer.push(value);
+                    ReceiverMode::Buffering(buf_time) => match buf_time {
+                        BufferTime::Duration => {
+                            buffer.push(value);
 
-                        // Have we reached the maximum time?
-                        if time::Instant::now() - start > max_buffer_time {
-                            // Flush the buffer
-                            for v in &buffer {
-                                output::print_entry(&v, &rx_config, &quitting);
+                            if time::Instant::now() - start > max_buffer_time {
+                                for v in &buffer {
+                                    output::print_entry(&v, &rx_config, &quitting);
+                                }
+                                buffer.clear();
+
+                                mode = ReceiverMode::Streaming;
                             }
-                            buffer.clear();
-
-                            // Start streaming
-                            mode = ReceiverMode::Streaming;
                         }
-                    }
+                        BufferTime::Eternity => {
+                            buffer.push(value);
+                        }
+                    },
                     ReceiverMode::Streaming => {
                         output::print_entry(&value, &rx_config, &quitting);
                     }
                 }
             }
 
-            // If we have finished fast enough (faster than max_buffer_time), we haven't streamed
-            // anything to the console, yet. In this case, sort the results and print them:
             if !buffer.is_empty() {
+                // TODO: parallel sort?
                 buffer.sort();
                 for value in buffer {
                     output::print_entry(&value, &rx_config, &quitting);
@@ -141,135 +144,35 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         }
     });
 
-    if !config.sort_path {
-        let walker = WalkBuilder::new(root)
-            .hidden(!config.dot_files)
-            .ignore(config.read_ignore)
-            .git_ignore(config.read_ignore)
-            .parents(config.read_ignore)
-            .git_global(config.read_ignore)
-            .git_exclude(config.read_ignore)
-            .follow_links(config.follow_symlink)
-            .max_depth(config.max_depth)
-            .threads(threads)
-            .build_parallel();
+    let walker = WalkBuilder::new(root)
+        .hidden(!config.dot_files)
+        .ignore(config.read_ignore)
+        .git_ignore(config.read_ignore)
+        .parents(config.read_ignore)
+        .git_global(config.read_ignore)
+        .git_exclude(config.read_ignore)
+        .follow_links(config.follow_symlink)
+        .max_depth(config.max_depth)
+        .threads(threads)
+        .build_parallel();
 
-        // Spawn the sender threads.
-        walker.run(|| {
-            let config = Arc::clone(&config);
-            let pattern = Arc::clone(&pattern);
-            let tx = tx.clone();
-            let root = root.to_owned();
-            let mountpoint = mountpoint.to_owned();
+    // Spawn the sender threads.
+    walker.run(|| {
+        let config = Arc::clone(&config);
+        let pattern = Arc::clone(&pattern);
+        let tx = tx.clone();
+        let root = root.to_owned();
+        let mountpoint = mountpoint.to_owned();
 
-            Box::new(move |entry_o| {
-                let entry = match entry_o {
-                    Ok(e) => e,
-                    Err(_) => return ignore::WalkState::Continue,
-                };
-                let entry_path = entry.path();
-
-                if entry_path == root {
-                    return ignore::WalkState::Continue;
-                }
-
-                if config.file_type != FileType::Any {
-                    if let Some(file_type) = entry.file_type() {
-                        let to_skip = match config.file_type {
-                            FileType::Any => false,
-                            FileType::Directory => !file_type.is_dir(),
-                            FileType::Regular => !file_type.is_file(),
-                            FileType::SymLink => !file_type.is_symlink(),
-                            FileType::Executable => {
-                                // entry_path.metadata() always follows symlinks
-                                if let Ok(meta) = entry_path.metadata() {
-                                    meta.is_dir() || !is_executable(&meta)
-                                } else if !file_type.is_symlink() {
-                                    error(&format!(
-                                        "cannot get metadata of {:?}",
-                                        entry_path.as_os_str()
-                                    ))
-                                } else {
-                                    false
-                                }
-                            }
-                        };
-                        if to_skip {
-                            return ignore::WalkState::Continue;
-                        }
-                    } else {
-                        error(&format!(
-                            "cannot get file type of {:?}",
-                            entry_path.as_os_str()
-                        ));
-                    }
-                }
-
-                if config.match_full_path {
-                    if let Ok(path_buf) = to_absolute_path(&entry_path) {
-                        if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                            tx.send(entry_path.to_owned())
-                                .unwrap_or_else(|err| error(&err.to_string()));
-                        }
-                    } else {
-                        error(&format!(
-                            "cannot get full path of {:?}",
-                            entry_path.as_os_str()
-                        ));
-                    }
-                } else {
-                    if let Some(os_str) = entry_path.file_name() {
-                        if pattern.is_match(os_str.as_bytes()) {
-                            tx.send(entry_path.to_owned())
-                                .unwrap_or_else(|err| error(&err.to_string()));
-                        }
-                    }
-                }
-
-                if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {
-                    if !match_mountpoint(&mountpoint, &entry_path, false) {
-                        return ignore::WalkState::Skip;
-                    }
-                }
-
-                ignore::WalkState::Continue
-            })
-        });
-    } else {
-        let walker = WalkBuilder::new(root)
-            .hidden(!config.dot_files)
-            .ignore(config.read_ignore)
-            .git_ignore(config.read_ignore)
-            .parents(config.read_ignore)
-            .git_global(config.read_ignore)
-            .git_exclude(config.read_ignore)
-            .follow_links(config.follow_symlink)
-            .max_depth(config.max_depth)
-            .sort_by_file_name(|lhs, rhs| lhs.cmp(rhs))
-            .threads(1)
-            .build();
-
-        // TODO: Dont' Repeat Yourself!
-        //       How about utilizing the buffering mode?
-        walker.for_each(|entry_o| {
+        Box::new(move |entry_o| {
             let entry = match entry_o {
                 Ok(e) => e,
-                Err(_) => return,
+                Err(_) => return ignore::WalkState::Continue,
             };
             let entry_path = entry.path();
 
             if entry_path == root {
-                return;
-            }
-
-            // XXX: This may be slow as it checks every files, not only directories.
-            if config.follow_symlink && config.same_filesystem {
-                if let Ok(mut path) = entry_path.clone().canonicalize() {
-                    path.pop();
-                    if !match_mountpoint(&mountpoint, &path, true) {
-                        return;
-                    }
-                }
+                return ignore::WalkState::Continue;
             }
 
             if config.file_type != FileType::Any {
@@ -294,7 +197,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                         }
                     };
                     if to_skip {
-                        return;
+                        return ignore::WalkState::Continue;
                     }
                 } else {
                     error(&format!(
@@ -324,8 +227,16 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                     }
                 }
             }
-        });
-    }
+
+            if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {
+                if !match_mountpoint(&mountpoint, &entry_path, false) {
+                    return ignore::WalkState::Skip;
+                }
+            }
+
+            ignore::WalkState::Continue
+        })
+    });
 
     // Drop the initial sender. If we don't do this, the receiver will block even
     // if all threads have finished, since there is still one sender around.

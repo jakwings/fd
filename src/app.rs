@@ -214,7 +214,9 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "sort-path",
         "Sort the results by pathname.",
-        "The search results will guarantee to be sorted by pathname before output."
+        "The search results will be sorted by pathname before output. \
+         Sort by lexicographically comparing the byte string of every path component \
+         (not comparing the whole pathname directly)."
     );
 
     doc!(

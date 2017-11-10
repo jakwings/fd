@@ -13,6 +13,10 @@ ff: Just my own fork of [fd] with many incompatible changes. (unstable)
 cargo install ff-find
 ```
 
+## Demo
+
+[![asciicast](https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU.png)](https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU)
+
 ## Help
 
 ```

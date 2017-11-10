@@ -49,7 +49,7 @@ pub fn build() -> App<'static, 'static> {
         .unset_settings(&[AppSettings::StrictUtf8])
         .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
-        .usage("ff [OPTIONS] [DIRECTORY] [PATTERN]")
+        .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN]]")
         .help_message("Prints help information. Use --help for more details.")
         .arg(
             arg("use-glob")

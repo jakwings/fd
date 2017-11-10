@@ -13,14 +13,11 @@ ff: Just my own fork of [fd] with many incompatible changes. (unstable)
 cargo install ff-find
 ```
 
-
-## Usage
+## Help
 
 ```
-ff 0.3.0
-
 USAGE:
-    ff [OPTIONS] [DIRECTORY] [PATTERN]
+    ff [OPTIONS] [<DIRECTORY> [PATTERN]]
 
 OPTIONS:
     -g, --glob

@@ -17,7 +17,7 @@ cargo install ff-find
 ## Usage
 
 ```
-ff 0.2.0
+ff 0.3.0
 
 USAGE:
     ff [OPTIONS] [DIRECTORY] [PATTERN]
@@ -49,6 +49,10 @@ OPTIONS:
             Do not take symlinks as normal files and traverse the symlinked
             directories.
 
+    -M, --mount
+            Do not descend into directories on other filesystems, as a symlink
+            may point to a directory on another filesystem.
+
     -0, --print0
             Each search result is terminated with NUL instead of LF when
             printed.
@@ -57,8 +61,9 @@ OPTIONS:
             Relative paths for output are transformed into absolute paths.
 
     -S, --sort-path
-            The search results will guarantee to be sorted by pathname before
-            output.
+            The search results will be sorted by pathname before output. Sort by
+            lexicographically comparing the byte string of every path component
+            (not comparing the whole pathname directly).
 
     -a, --all
             All files and directories are searched. By default, files and

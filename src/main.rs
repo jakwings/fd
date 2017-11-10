@@ -2,6 +2,7 @@ extern crate ansi_term;
 extern crate atty;
 extern crate clap;
 extern crate ctrlc;
+extern crate find_mountpoint;
 extern crate globset;
 extern crate ignore;
 #[cfg(all(unix, not(target_os = "redox")))]
@@ -151,6 +152,7 @@ fn main() {
         dot_files: args.is_present("dot-files"),
         read_ignore: !args.is_present("no-ignore"),
         follow_symlink: args.is_present("follow-symlink"),
+        same_filesystem: args.is_present("same-filesystem"),
         null_terminator: args.is_present("null_terminator"),
         command: command,
         ls_colors: ls_colors,

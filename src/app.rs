@@ -23,7 +23,6 @@ macro_rules! doc {
 // TODO upstream:
 //     Only show advanced options with the *long* flag --help.
 //     https://github.com/kbknapp/clap-rs/issues/1064
-// TODO: --mount device (lstat.dev())
 pub fn build() -> App<'static, 'static> {
     let help = get_help();
     let arg = |name| {
@@ -79,6 +78,7 @@ pub fn build() -> App<'static, 'static> {
         )
         .arg(arg("full-path").long("full-path").short("p"))
         .arg(arg("follow-symlink").long("follow").short("L"))
+        .arg(arg("same-filesystem").long("mount").short("M"))
         .arg(arg("null_terminator").long("print0").short("0"))
         .arg(arg("absolute-path").long("absolute-path").short("A"))
         .arg(arg("sort-path").long("sort-path").short("S"))
@@ -186,6 +186,14 @@ fn get_help() -> HashMap<&'static str, Help> {
         "follow-symlink",
         "Follow symbolic links.",
         "Do not take symlinks as normal files and traverse the symlinked directories."
+    );
+
+    doc!(
+        help,
+        "same-filesystem",
+        "Do not descend into directories on other filesystems.",
+        "Do not descend into directories on other filesystems, \
+         as a symlink may point to a directory on another filesystem."
     );
 
     doc!(

@@ -1,5 +1,5 @@
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::channel;
@@ -7,6 +7,7 @@ use std::thread;
 use std::time;
 
 use super::ctrlc;
+use super::find_mountpoint::{find_mountpoint, find_mountpoint_pre_canonicalized};
 use super::ignore::{self, WalkBuilder};
 use super::regex::bytes::Regex;
 
@@ -43,6 +44,17 @@ pub enum FileType {
 pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     let (tx, rx) = channel();
     let threads = config.threads;
+
+    let mountpoint = if config.same_filesystem {
+        find_mountpoint(&root).unwrap_or_else(|_| {
+            error(&format!(
+                "cannot get the mount point of {:?}",
+                root.as_os_str()
+            ))
+        })
+    } else {
+        PathBuf::new()
+    };
 
     let quitting = Arc::new(AtomicBool::new(false));
 
@@ -148,6 +160,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             let pattern = Arc::clone(&pattern);
             let tx = tx.clone();
             let root = root.to_owned();
+            let mountpoint = mountpoint.to_owned();
 
             Box::new(move |entry_o| {
                 let entry = match entry_o {
@@ -213,6 +226,12 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                     }
                 }
 
+                if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {
+                    if !match_mountpoint(&mountpoint, &entry_path, false) {
+                        return ignore::WalkState::Skip;
+                    }
+                }
+
                 ignore::WalkState::Continue
             })
         });
@@ -231,6 +250,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             .build();
 
         // TODO: Dont' Repeat Yourself!
+        //       How about utilizing the buffering mode?
         walker.for_each(|entry_o| {
             let entry = match entry_o {
                 Ok(e) => e,
@@ -240,6 +260,16 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
             if entry_path == root {
                 return;
+            }
+
+            // XXX: This may be slow as it checks every files, not only directories.
+            if config.follow_symlink && config.same_filesystem {
+                if let Ok(mut path) = entry_path.clone().canonicalize() {
+                    path.pop();
+                    if !match_mountpoint(&mountpoint, &path, true) {
+                        return;
+                    }
+                }
             }
 
             if config.file_type != FileType::Any {
@@ -303,4 +333,19 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
     // Wait for the receiver thread to print out all results.
     receiver_thread.join().unwrap();
+}
+
+fn match_mountpoint(mountpoint: &Path, path: &Path, canonicalized: bool) -> bool {
+    let result = if !canonicalized {
+        find_mountpoint(path).map(|path_buf| mountpoint == path_buf.as_path())
+    } else {
+        find_mountpoint_pre_canonicalized(path).map(|path| mountpoint == path)
+    };
+
+    result.unwrap_or_else(|_| {
+        error(&format!(
+            "cannot get the mount point of {:?}",
+            path.as_os_str()
+        ))
+    })
 }

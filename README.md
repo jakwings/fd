@@ -16,7 +16,7 @@ cargo install ff-find
 ## Demo
 
 <a href="https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU">
-<img alt="asciicast" height="524" src="https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU.png">
+<img alt="asciicast" height="524" src="https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU.png?_=20171111">
 </a>
 
 ## Help
@@ -27,12 +27,11 @@ USAGE:
 
 OPTIONS:
     -g, --glob
-            Match the whole file path with a glob pattern. [default: use regex
-            pattern]
+            Match the whole file path with a glob pattern. [default: regex]
 
     -r, --regex
-            The search pattern is a regex pattern by default. It can match part
-            of the file path.
+            Match the whole file path with a regex pattern. This is the default
+            behavior.
 
     -u, --unicode
             Turn on Unicode support for regex patterns. Character classes are
@@ -43,14 +42,13 @@ OPTIONS:
             Perform a case-insensitive search. This overrides --case-sensitive.
 
     -s, --case-sensitive
-            Perform a case-sensitive search. This overrides --ignore-case.
+            Perform a case-sensitive search. This is the default behavior.
 
     -p, --full-path
             Match the absolute path instead of the filename or directory name.
 
     -L, --follow
-            Do not take symlinks as normal files and traverse the symlinked
-            directories.
+            Follow symlinks and traverse the symlinked directories.
 
     -M, --mount
             Do not descend into directories on other filesystems, as a symlink
@@ -65,17 +63,18 @@ OPTIONS:
 
     -S, --sort-path
             The search results will be sorted by pathname before output. Sort by
-            lexicographically comparing the byte string of every path component
-            (not comparing the whole pathname directly).
+            lexicographically comparing the byte strings of path components (not
+            comparing the whole pathnames directly).
 
     -a, --all
             All files and directories are searched. By default, files and
             directories of which the names start with a dot "." are ignored in
-            the search.
+            the search. Files ignored by patterns in .(git)ignore files are
+            still excluded.
 
     -I, --no-ignore
             Show search results from files and directories that would otherwise
-            be ignored by .*ignore files.
+            be ignored by .(git)ignore files.
 
     -t, --type <filetype>
             Filter the search by type: [default: no filter]
@@ -94,12 +93,12 @@ OPTIONS:
                 always: always use colorized output
 
     -j, --threads <number>
-            The number of threads to use for searching & command execution. 0
-            means [default: number of available CPU cores]
+            The number of threads to use for searching and command execution.
+            0 means [default: number of available CPU cores]
 
         --max-buffer-time <milliseconds>
-            The amount of time for the search results to be buffered and sorted
-            before streaming.
+            The amount of time (in milliseconds) for the search results to be
+            buffered and sorted before streaming.
 
     -x, --exec <program [argument]... [;]>
             Run the given command for each search result, which can be
@@ -121,7 +120,8 @@ ARGS:
             search the current working directory.
 
     <PATTERN>
-            The search pattern, a regular expression or glob string. [optional]
+            The search pattern, a regex or glob pattern. [optional]
+            The default values for regex and glob are ^ and * respectively.
 ```
 
 

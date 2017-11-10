@@ -149,15 +149,15 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "use-glob",
-        "Search with a glob pattern. [default: use regex pattern]",
-        "Match the whole file path with a glob pattern. [default: use regex pattern]"
+        "Search with a glob pattern. [default: regex]",
+        "Match the whole file path with a glob pattern. [default: regex]"
     );
 
     doc!(
         help,
         "use-regex",
         "Search with a regex pattern. [default]",
-        "The search pattern is a regex pattern by default. It can match part of the file path."
+        "Match the whole file path with a regex pattern. This is the default behavior."
     );
 
     doc!(
@@ -171,7 +171,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "case-sensitive",
         "Case-sensitive search. [default]",
-        "Perform a case-sensitive search. This overrides --ignore-case."
+        "Perform a case-sensitive search. This is the default behavior."
     );
 
     doc!(
@@ -185,7 +185,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "follow-symlink",
         "Follow symbolic links.",
-        "Do not take symlinks as normal files and traverse the symlinked directories."
+        "Follow symlinks and traverse the symlinked directories."
     );
 
     doc!(
@@ -215,16 +215,17 @@ fn get_help() -> HashMap<&'static str, Help> {
         "sort-path",
         "Sort the results by pathname.",
         "The search results will be sorted by pathname before output. \
-         Sort by lexicographically comparing the byte string of every path component \
-         (not comparing the whole pathname directly)."
+         Sort by lexicographically comparing the byte strings of path components \
+         (not comparing the whole pathnames directly)."
     );
 
     doc!(
         help,
         "dot-files",
         "Include dot-files in the search.",
-        "All files and directories are searched. By default, files and directories of which the \
-         names start with a dot \".\" are ignored in the search."
+        "All files and directories are searched. By default, files and directories \
+         of which the names start with a dot \".\" are ignored in the search. \
+         Files ignored by patterns in .(git)ignore files are still excluded."
     );
 
     doc!(
@@ -232,7 +233,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "no-ignore",
         "Do not respect .(git)ignore files.",
         "Show search results from files and directories that would otherwise be ignored by \
-         .*ignore files."
+         .(git)ignore files."
     );
 
     doc!(
@@ -270,16 +271,19 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "threads",
-        "Set number of threads to use for searching & command execution.",
-        "The number of threads to use for searching & command execution. \
-         0 means [default: number of available CPU cores]"
+        "Set number of threads for searching and command execution.",
+        concat!(
+            "The number of threads to use for searching and command execution.\n",
+            "0 means [default: number of available CPU cores]"
+        )
     );
 
     doc!(
         help,
         "max-buffer-time",
         "Set time (in milliseconds) for buffering and sorting.",
-        "The amount of time for the search results to be buffered and sorted before streaming."
+        "The amount of time (in milliseconds) for the search results to be buffered and sorted \
+         before streaming."
     );
 
     doc!(
@@ -303,7 +307,10 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "PATTERN",
-        "The search pattern, a regular expression or glob string. [optional]"
+        concat!(
+            "The search pattern, a regex or glob pattern. [optional]\n",
+            "The default values for regex and glob are ^ and * respectively."
+        )
     );
 
     help

@@ -1,33 +1,26 @@
 [package]
 version = "0.2.0"
-name = "ff-find"
+name    = "ff-find"
+license = "MIT/Apache-2.0"
 authors = [
     "David Peter <mail@david-peter.de>",
     "J.W <jakwings@gmail.com>",
 ]
-license = "MIT/Apache-2.0"
-readme = "README.md"
-homepage = "https://github.com/jakwings/ff-find"
-repository = "https://github.com/jakwings/ff-find"
+
+build       = "build.rs"
+readme      = "README.md"
+homepage    = "https://github.com/jakwings/ff-find"
+repository  = "https://github.com/jakwings/ff-find"
 description = "ff is a simple and fast utility for file search on Unix commandline."
-categories = ["command-line-utilities"]
-keywords = [
-    "search",
-    "find",
-    "file",
-    "filesystem",
-    "tool",
-]
-build = "build.rs"
+categories  = [ "command-line-utilities" ]
+keywords    = [ "search", "find", "file", "filesystem", "tool" ]
+
+[badges.travis-ci]
+repository = "jakwings/ff-find"
 
 [[bin]]
 name = "ff"
 path = "src/main.rs"
-[badges.travis-ci]
-repository = "jakwings/ff-find"
-
-[build-dependencies]
-clap = "2"
 
 [dependencies]
 ansi_term = "0.10"
@@ -46,3 +39,6 @@ libc = "0.2"
 [dev-dependencies]
 diff = "0.1"
 tempdir = "0.3"
+
+[build-dependencies]
+clap = "2"

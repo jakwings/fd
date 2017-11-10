@@ -192,7 +192,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                                     entry_path.as_os_str()
                                 ))
                             } else {
-                                false
+                                true
                             }
                         }
                     };

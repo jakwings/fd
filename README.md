@@ -138,9 +138,8 @@ Copyright (c) 2017 ff developers
 
 Copyright (c) 2017 fd developers
 
-Licensed under the [Apache License], Version 2.0 or the [MIT License], at your
-option.  All files in the project carrying such notice may not be copied,
-modified, or distributed except according to those terms.
+All files in the project are licensed under the [Apache License], Version 2.0
+or the [MIT License], at your option.
 
 [Apache License]: https://www.apache.org/licenses/LICENSE-2.0
 [MIT License]: https://opensource.org/licenses/MIT

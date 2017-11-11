@@ -5,7 +5,6 @@ extern crate ctrlc;
 extern crate find_mountpoint;
 extern crate globset;
 extern crate ignore;
-#[cfg(all(unix, not(target_os = "redox")))]
 extern crate nix;
 extern crate num_cpus;
 extern crate regex;

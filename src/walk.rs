@@ -8,7 +8,7 @@ use std::time;
 
 use super::ctrlc;
 use super::find_mountpoint::find_mountpoint;
-use super::ignore::{self, WalkBuilder};
+use super::ignore::{WalkState, WalkBuilder};
 use super::regex::bytes::Regex;
 
 use super::exec;
@@ -97,7 +97,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
             // Wait for all threads to exit before exiting the program.
             for h in handles {
-                h.join().unwrap();
+                h.join().expect("Error: unable to process search results");
             }
         } else {
             let start = time::Instant::now();
@@ -172,12 +172,12 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         Box::new(move |entry_o| {
             let entry = match entry_o {
                 Ok(e) => e,
-                Err(_) => return ignore::WalkState::Continue,
+                Err(_) => return WalkState::Continue,
             };
             let entry_path = entry.path();
 
             if entry_path == root {
-                return ignore::WalkState::Continue;
+                return WalkState::Continue;
             }
 
             if config.file_type != FileType::Any {
@@ -205,7 +205,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                         }
                     };
                     if to_skip {
-                        return ignore::WalkState::Continue;
+                        return WalkState::Continue;
                     }
                 } else {
                     error(&format!(
@@ -239,11 +239,11 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {
                 if !match_mountpoint(&mountpoint, &entry_path) {
                     // do not descend this directory
-                    return ignore::WalkState::Skip;
+                    return WalkState::Skip;
                 }
             }
 
-            ignore::WalkState::Continue
+            WalkState::Continue
         })
     });
 
@@ -252,7 +252,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     drop(tx);
 
     // Wait for the receiver thread to print out all results.
-    receiver_thread.join().unwrap();
+    receiver_thread.join().expect("Error: unable to collect search results");
 }
 
 fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {

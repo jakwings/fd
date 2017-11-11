@@ -170,7 +170,7 @@ fn main() {
             // XXX: so ugly
             RegexBuilder::new(&args.value_of_os("PATTERN")
                 .and_then(escape_pattern)
-                .unwrap())
+                .expect("Error: invalid UTF-8 byte sequences found"))
         }
     } else {
         let pattern = if pattern.is_empty() {

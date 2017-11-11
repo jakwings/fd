@@ -16,7 +16,7 @@ cargo install ff-find
 ## Demo
 
 <a href="https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU">
-<img alt="asciicast" height="524" src="https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU.png?_=20171111">
+<img alt="asciicast" height="524" src="https://user-images.githubusercontent.com/23622455/32689551-f89e894e-c721-11e7-8ec7-78013143fd53.png">
 </a>
 
 ## Help

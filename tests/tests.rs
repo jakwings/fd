@@ -635,7 +635,7 @@ fn test_symlink() {
     );
 }
 
-/// Shell script execution (--exec)
+/// Command execution (--exec)
 #[test]
 fn test_exec() {
     let env = TestEnv::new();

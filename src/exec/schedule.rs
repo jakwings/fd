@@ -5,9 +5,9 @@ use std::sync::mpsc::Receiver;
 
 use super::ExecTemplate;
 
-/// An event loop that listens for inputs from the `rx` receiver. Each received input will
-/// generate a command with the supplied command template. The generated command will then
-/// be executed, and this process will continue until the receiver's sender has closed.
+// An event loop that listens for inputs from the `rx` receiver.
+// Each received input will generate a command with the supplied command template.
+// The generated command will then be executed and process error is irrelevant to ff.
 pub fn schedule(
     rx: Arc<Mutex<Receiver<PathBuf>>>,
     cmd: Arc<ExecTemplate>,

@@ -20,9 +20,8 @@ macro_rules! doc {
     };
 }
 
-// TODO upstream:
-//     Only show advanced options with the *long* flag --help.
-//     https://github.com/kbknapp/clap-rs/issues/1064
+// TODO upstream: Only show advanced options with the *long* flag --help.
+//                https://github.com/kbknapp/clap-rs/issues/1064
 pub fn build() -> App<'static, 'static> {
     let help = get_help();
     let arg = |name| {
@@ -132,9 +131,8 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg("PATTERN").default_value(""))
 }
 
-// TODO upstream:
-//     Remove trailing spaces in --help message.
-//     https://github.com/kbknapp/clap-rs/issues/1094
+// TODO upstream: Remove trailing spaces in --help message.
+//                https://github.com/kbknapp/clap-rs/issues/1094
 fn get_help() -> HashMap<&'static str, Help> {
     let mut help = HashMap::new();
 

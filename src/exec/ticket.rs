@@ -6,7 +6,6 @@ use std::sync::atomic::{self, AtomicBool};
 use super::ExecCommand;
 use super::SIGINT;
 
-/// A state that offers access to executing a generated command.
 pub struct ExecTicket {
     command: ExecCommand,
     out_lock: Arc<Mutex<()>>,
@@ -26,8 +25,6 @@ impl ExecTicket {
         }
     }
 
-    /// Executes the command stored within the ticket,
-    /// and clearing the command's buffer when finished.
     #[cfg(target_os = "redox")]
     pub fn execute(&self) {
         use std::io::Write;
@@ -45,8 +42,6 @@ impl ExecTicket {
         // Then wait for the command to exit, if it was spawned.
         match cmd {
             Ok(output) => {
-                // While this lock is active, this thread will be the only thread allowed
-                // to write it's outputs.
                 let _lock = self.out_lock.lock().unwrap();
 
                 let stdout = io::stdout();
@@ -87,7 +82,8 @@ impl ExecTicket {
                 dup2(stdout_fds[1], STDOUT_FILENO);
                 dup2(stderr_fds[1], STDERR_FILENO);
 
-                // Close all the fds we created here, so EOF will be sent when the program exits.
+                // Close all the fds we created here,
+                // so EOF will be sent when the program exits.
                 close(stdout_fds[0]);
                 close(stdout_fds[1]);
                 close(stderr_fds[0]);
@@ -101,8 +97,9 @@ impl ExecTicket {
             // Close the write ends of the pipes in the parent
             close(stdout_fds[1]);
             close(stderr_fds[1]);
+
+            // But create files from the read ends.
             (
-                // But create files from the read ends.
                 File::from_raw_fd(stdout_fds[0]),
                 File::from_raw_fd(stderr_fds[0]),
             )

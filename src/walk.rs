@@ -7,7 +7,7 @@ use std::thread;
 use std::time;
 
 use super::ctrlc;
-use super::find_mountpoint::{find_mountpoint, find_mountpoint_pre_canonicalized};
+use super::find_mountpoint::find_mountpoint;
 use super::ignore::{self, WalkBuilder};
 use super::regex::bytes::Regex;
 
@@ -16,20 +16,20 @@ use super::fshelper::{is_executable, to_absolute_path};
 use super::internal::{AppOptions, error};
 use super::output;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum BufferTime {
     Duration, // End buffering mode after this duration.
     Eternity, // Always buffer the search results.
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum ReceiverMode {
     Buffering(BufferTime), // Receiver is still buffering in order to sort the results.
     Streaming,             // Receiver is directly printing search results to the output.
 }
 
 /// The type of file to search for.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum FileType {
     Any,
     Directory,
@@ -38,15 +38,17 @@ pub enum FileType {
     Executable,
 }
 
-/// Recursively scan the given search path for files/pathnames matching the pattern.
-///
-/// If the `--exec` argument was supplied, this will create a thread pool for executing
-/// jobs in parallel from a given command line and the discovered paths. Otherwise, each
-/// path will simply be written to standard output.
+// Recursively scan the given search path for files/pathnames matching the pattern.
+//
+// If the `--exec` argument was supplied, this will create a thread pool for executing
+// jobs in parallel from a given command line and the discovered paths. Otherwise, each
+// path will simply be written to standard output.
 pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     let (tx, rx) = channel();
     let threads = config.threads;
 
+    // The root directory of the file system,
+    // similar to PrefixComponent (C:\, D:\, \\server\share, etc.) on Windows.
     let mountpoint = if config.same_filesystem {
         find_mountpoint(&root).unwrap_or_else(|_| {
             error(&format!(
@@ -58,6 +60,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         PathBuf::new()
     };
 
+    // A signal to tell the colorizer or the command processor to exit gracefully.
     let quitting = Arc::new(AtomicBool::new(false));
 
     if config.ls_colors.is_some() {
@@ -102,7 +105,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 .max_buffer_time
                 .unwrap_or_else(|| time::Duration::from_millis(100));
 
-            let mut buffer = vec![];
+            let mut buffer = Vec::new();
             let mut mode = if rx_config.sort_path {
                 ReceiverMode::Buffering(BufferTime::Eternity)
             } else {
@@ -136,6 +139,8 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
             if !buffer.is_empty() {
                 // TODO: parallel sort?
+                // Stable sort is fast enough for nearly sorted items,
+                // although it uses 50% more memory than unstable sort.
                 buffer.sort();
                 for value in buffer {
                     output::print_entry(&value, &rx_config, &quitting);
@@ -186,13 +191,16 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                             // entry_path.metadata() always follows symlinks
                             if let Ok(meta) = entry_path.metadata() {
                                 meta.is_dir() || !is_executable(&meta)
-                            } else if !file_type.is_symlink() {
-                                error(&format!(
-                                    "cannot get metadata of {:?}",
-                                    entry_path.as_os_str()
-                                ))
                             } else {
-                                true
+                                if !file_type.is_symlink() {
+                                    error(&format!(
+                                        "cannot get metadata of {:?}",
+                                        entry_path.as_os_str()
+                                    ))
+                                } else {
+                                    // symlinks to non-existent files
+                                    true
+                                }
                             }
                         }
                     };
@@ -229,7 +237,8 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             }
 
             if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {
-                if !match_mountpoint(&mountpoint, &entry_path, false) {
+                if !match_mountpoint(&mountpoint, &entry_path) {
+                    // do not descend this directory
                     return ignore::WalkState::Skip;
                 }
             }
@@ -246,17 +255,13 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     receiver_thread.join().unwrap();
 }
 
-fn match_mountpoint(mountpoint: &Path, path: &Path, canonicalized: bool) -> bool {
-    let result = if !canonicalized {
-        find_mountpoint(path).map(|path_buf| mountpoint == path_buf.as_path())
-    } else {
-        find_mountpoint_pre_canonicalized(path).map(|path| mountpoint == path)
-    };
-
-    result.unwrap_or_else(|_| {
-        error(&format!(
-            "cannot get the mount point of {:?}",
-            path.as_os_str()
-        ))
-    })
+fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {
+    find_mountpoint(path)
+        .map(|path_buf| mountpoint == path_buf.as_path())
+        .unwrap_or_else(|_| {
+            error(&format!(
+                "cannot get the mount point of {:?}",
+                path.as_os_str()
+            ))
+        })
 }

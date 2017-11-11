@@ -30,7 +30,6 @@ pub fn is_symlink(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(any(unix, target_os = "redox"))]
 pub fn is_executable(meta: &fs::Metadata) -> bool {
     meta.permissions().mode() & 0o111 != 0
 }

@@ -128,7 +128,7 @@ pub fn build() -> App<'static, 'static> {
                 .min_values(1),
         )
         .arg(arg("DIRECTORY").default_value(".").empty_values(false))
-        .arg(arg("PATTERN").default_value(""))
+        .arg(arg("PATTERN"))
 }
 
 // TODO upstream: Remove trailing spaces in --help message.
@@ -147,15 +147,15 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "use-glob",
-        "Search with a glob pattern. [default: regex]",
-        "Match the whole file path with a glob pattern. [default: regex]"
+        "Search with a glob pattern. [default]",
+        "Match the whole file path with a glob pattern. This is the default behavior."
     );
 
     doc!(
         help,
         "use-regex",
-        "Search with a regex pattern. [default]",
-        "Match the whole file path with a regex pattern. This is the default behavior."
+        "Search with a regex pattern. [default: glob]",
+        "Match the whole file path with a regex pattern. [default: glob]"
     );
 
     doc!(

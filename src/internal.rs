@@ -11,8 +11,8 @@ pub struct AppOptions {
     // Whether the search pattern is Unicode-aware by default.
     pub unicode: bool,
 
-    // Whether to search with a glob pattern.
-    pub use_glob: bool,
+    // Whether to search with a regex pattern.
+    pub use_regex: bool,
 
     // Whether the search is case-sensitive or case-insensitive.
     pub case_insensitive: bool,

@@ -38,9 +38,6 @@ use self::walk::FileType;
 fn main() {
     let args = app::build().get_matches();
 
-    let pattern = args.value_of("PATTERN")
-        .unwrap_or_else(|| error("need a UTF-8 encoded pattern"));
-
     let current_dir = PathBuf::from(".");
     if !is_dir(&current_dir) {
         error("cannot get current directory");
@@ -143,7 +140,7 @@ fn main() {
 
     let config = AppOptions {
         unicode: args.is_present("unicode"),
-        use_glob: args.is_present("use-glob"),
+        use_regex: args.is_present("use-regex"),
         case_insensitive: args.is_present("ignore-case"),
         match_full_path: args.is_present("full-path"),
         sort_path: args.is_present("sort-path"),
@@ -161,33 +158,38 @@ fn main() {
         file_type: file_type,
     };
 
-    let mut builder = if !config.use_glob {
-        let pattern = if pattern.is_empty() { &"^" } else { pattern };
+    let pattern = args.value_of_os("PATTERN");
 
+    let mut builder = if config.use_regex {
         if config.unicode {
+            let pattern = OsStr::to_str(pattern.unwrap_or(OsStr::new("^")))
+                .unwrap_or_else(|| error("Error: need a UTF-8 encoded pattern"));
+
             RegexBuilder::new(pattern)
         } else {
-            // XXX: so ugly
-            RegexBuilder::new(&args.value_of_os("PATTERN")
-                .and_then(escape_pattern)
-                .expect("Error: invalid UTF-8 byte sequences found"))
+            let pattern = escape_pattern(pattern.unwrap_or(OsStr::new("^")))
+                .expect("Error: invalid UTF-8 byte sequences found");
+
+            RegexBuilder::new(pattern.as_str())
         }
     } else {
-        let pattern = if pattern.is_empty() {
+        let pattern = if let Some(p) = pattern {
+            // XXX: globset should allow arbitrary bytes?
+            p.to_str()
+                .unwrap_or_else(|| error("Error: need a UTF-8 encoded pattern"))
+        } else {
             if config.match_full_path {
                 &"**"
             } else {
                 &"*"
             }
-        } else {
-            pattern
         };
 
         GlobBuilder::new(pattern, config.match_full_path)
     };
 
     match builder
-        .unicode(!config.use_glob && config.unicode)
+        .unicode(config.use_regex && config.unicode)
         .case_insensitive(config.case_insensitive)
         .dot_matches_new_line(true)
         .build()
@@ -197,6 +199,7 @@ fn main() {
     }
 }
 
+// XXX: not elegant
 fn escape_pattern(pattern: &OsStr) -> Option<String> {
     let mut bytes = Vec::new();
 

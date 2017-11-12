@@ -38,10 +38,18 @@ fn test_simple() {
          ./one/two/three/directory_foo
          ./symlink",
     );
+}
+
+/// Glob searches (--glob)
+#[test]
+fn test_glob_searches() {
+    let env = TestEnv::new();
+
+    env.assert_output(true, &[".", ""], "");
 
     env.assert_output(
         true,
-        &[".", ""],
+        &["--glob"],
         "./a.foo
          ./α β
          ./one
@@ -56,104 +64,9 @@ fn test_simple() {
          ./symlink",
     );
 
-    env.assert_output(true, &[".", "a.foo"], "./a.foo");
-    env.assert_output(true, &[".", "b.foo"], "./one/b.foo");
-    env.assert_output(true, &[".", "d.foo"], "./one/two/three/d.foo");
-
     env.assert_output(
         true,
-        &[".", "foo"],
-        "./a.foo
-         ./one/b.foo
-         ./one/two/c.foo
-         ./one/two/three/d.foo
-         ./one/two/three/directory_foo",
-    );
-}
-
-/// Explicit root path
-#[test]
-fn test_explicit_root_path() {
-    let env = TestEnv::new();
-
-    env.assert_output(
-        true,
-        &["one", "foo"],
-        "./one/b.foo
-         ./one/two/c.foo
-         ./one/two/three/d.foo
-         ./one/two/three/directory_foo",
-    );
-
-    env.assert_output(
-        true,
-        &["one/two/three", "foo"],
-        "./one/two/three/d.foo
-         ./one/two/three/directory_foo",
-    );
-
-    env.assert_output_subdirectory(
-        true,
-        "one/two",
-        &["../../", "foo"],
-        "../../a.foo
-         ../../one/b.foo
-         ../../one/two/c.foo
-         ../../one/two/three/d.foo
-         ../../one/two/three/directory_foo",
-    );
-
-    env.assert_output_subdirectory(
-        true,
-        "one/two/three",
-        &[".."],
-        "../C.Foo2
-         ../c.foo
-         ../three
-         ../three/d.foo
-         ../three/directory_foo",
-    );
-}
-
-/// Regex searches
-#[test]
-fn test_regex_searches() {
-    let env = TestEnv::new();
-
-    env.assert_output(
-        true,
-        &[".", "[a-c].foo"],
-        "./a.foo
-         ./one/b.foo
-         ./one/two/c.foo",
-    );
-
-    env.assert_output(
-        true,
-        &[".", "[a-c].foo", "--case-sensitive"],
-        "./a.foo
-         ./one/b.foo
-         ./one/two/c.foo",
-    );
-}
-
-/// Match Unicode string (--unicode)
-#[test]
-fn test_unicode_aware() {
-    let env = TestEnv::new();
-
-    env.assert_output(true, &[".", "\\xCE"], "./α β");
-    env.assert_output(true, &["--unicode", ".", "\\xCE"], "");
-}
-
-/// Glob searches (--glob)
-#[test]
-fn test_glob_searches() {
-    let env = TestEnv::new();
-
-    env.assert_output(
-        true,
-        &["--glob"],
+        &["--glob", ".", "*"],
         "./a.foo
          ./α β
          ./one
@@ -175,22 +88,6 @@ fn test_glob_searches() {
          ./one/b.foo
          ./one/two/c.foo
          ./one/two/three/d.foo",
-    );
-
-    env.assert_output(
-        true,
-        &["--glob", "--regex", ".", "[a-c].foo"],
-        "./a.foo
-         ./one/b.foo
-         ./one/two/c.foo",
-    );
-
-    env.assert_output(
-        true,
-        &["--regex", "--glob", ".", "[a-c].foo"],
-        "./a.foo
-         ./one/b.foo
-         ./one/two/c.foo",
     );
 
     env.assert_output(true, &["--glob", ".", "*", "--full-path"], "");
@@ -238,6 +135,129 @@ fn test_glob_searches() {
          ./one/two/c.foo
          ./one/two/three/d.foo",
     );
+
+    env.assert_output(
+        true,
+        &["--regex", "--glob", ".", "[a-c].foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo",
+    );
+}
+
+/// Regex searches (--regex)
+#[test]
+fn test_regex_searches() {
+    let env = TestEnv::new();
+
+    env.assert_output(
+        true,
+        &["--regex"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
+    );
+
+    env.assert_output(
+        true,
+        &["--regex", ".", ""],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink",
+    );
+
+    env.assert_output(true, &["--regex", ".", "a.foo"], "./a.foo");
+    env.assert_output(true, &["--regex", ".", "b.foo"], "./one/b.foo");
+    env.assert_output(true, &["--regex", ".", "d.foo"], "./one/two/three/d.foo");
+
+    env.assert_output(
+        true,
+        &["--regex", ".", "foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+
+    env.assert_output(
+        true,
+        &["--glob", "--regex", ".", "[a-c].foo"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo",
+    );
+}
+
+/// Explicit root path
+#[test]
+fn test_explicit_root_path() {
+    let env = TestEnv::new();
+
+    env.assert_output(
+        true,
+        &["--regex", "one", "foo"],
+        "./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+
+    env.assert_output(
+        true,
+        &["--regex", "one/two/three", "foo"],
+        "./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+
+    env.assert_output_subdirectory(
+        true,
+        "one/two",
+        &["--regex", "../../", "foo"],
+        "../../a.foo
+         ../../one/b.foo
+         ../../one/two/c.foo
+         ../../one/two/three/d.foo
+         ../../one/two/three/directory_foo",
+    );
+
+    env.assert_output_subdirectory(
+        true,
+        "one/two/three",
+        &[".."],
+        "../C.Foo2
+         ../c.foo
+         ../three
+         ../three/d.foo
+         ../three/directory_foo",
+    );
+}
+
+/// Match Unicode string (--unicode)
+#[test]
+fn test_unicode_aware() {
+    let env = TestEnv::new();
+
+    env.assert_output(true, &["--regex", ".", "\\xCE"], "./α β");
+    env.assert_output(true, &["--regex", "--unicode", ".", "\\xCE"], "");
 }
 
 /// Case sensitivity (--case-sensitive)
@@ -245,17 +265,21 @@ fn test_glob_searches() {
 fn test_case_sensitive() {
     let env = TestEnv::new();
 
-    env.assert_output(true, &[".", "c.foo", "--case-sensitive"], "./one/two/c.foo");
+    env.assert_output(
+        true,
+        &["--regex", ".", "c.foo", "--case-sensitive"],
+        "./one/two/c.foo",
+    );
 
     env.assert_output(
         true,
-        &[".", "C.Foo", "--case-sensitive"],
+        &["--regex", ".", "C.Foo", "--case-sensitive"],
         "./one/two/C.Foo2",
     );
 
     env.assert_output(
         true,
-        &[".", "C.Foo", "--ignore-case", "--case-sensitive"],
+        &["--regex", ".", "C.Foo", "--ignore-case", "--case-sensitive"],
         "./one/two/C.Foo2",
     );
 }
@@ -267,14 +291,14 @@ fn test_case_insensitive() {
 
     env.assert_output(
         true,
-        &[".", "C.Foo", "--ignore-case"],
+        &["--regex", ".", "C.Foo", "--ignore-case"],
         "./one/two/C.Foo2
          ./one/two/c.foo",
     );
 
     env.assert_output(
         true,
-        &[".", "C.Foo", "--case-sensitive", "--ignore-case"],
+        &["--regex", ".", "C.Foo", "--case-sensitive", "--ignore-case"],
         "./one/two/C.Foo2
          ./one/two/c.foo",
     );
@@ -291,6 +315,7 @@ fn test_full_path() {
     env.assert_output(
         true,
         &[
+            "--regex",
             ".",
             &format!("^{prefix}.*three.*foo$", prefix = prefix),
             "--full-path",
@@ -307,7 +332,7 @@ fn test_hidden() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--all"],
+        &["--regex", ".", "foo", "--all"],
         "./.hidden.foo
          ./a.foo
          ./one/b.foo
@@ -318,7 +343,7 @@ fn test_hidden() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--all", "--no-ignore"],
+        &["--regex", ".", "foo", "--all", "--no-ignore"],
         "./.hidden.foo
          ./a.foo
          ./ignored.foo
@@ -336,7 +361,7 @@ fn test_no_ignore() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--no-ignore"],
+        &["--regex", ".", "foo", "--no-ignore"],
         "./a.foo
          ./ignored.foo
          ./one/b.foo
@@ -353,7 +378,7 @@ fn test_follow() {
 
     env.assert_output(
         true,
-        &[".", "c.foo", "--follow"],
+        &["--regex", ".", "c.foo", "--follow"],
         "./one/two/c.foo
          ./symlink/c.foo",
     );
@@ -366,7 +391,7 @@ fn test_print0() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--print0"],
+        &["--regex", ".", "foo", "--print0"],
         "./a.fooNULL
          ./one/b.fooNULL
          ./one/two/c.fooNULL
@@ -449,7 +474,7 @@ fn test_absolute_path() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--absolute-path"],
+        &["--regex", ".", "foo", "--absolute-path"],
         &format!(
             "{abs_path}/a.foo
              {abs_path}/one/b.foo
@@ -462,7 +487,7 @@ fn test_absolute_path() {
 
     env.assert_output(
         true,
-        &[&abs_path, "foo"],
+        &["--regex", &abs_path, "foo"],
         &format!(
             "{abs_path}/a.foo
              {abs_path}/one/b.foo
@@ -605,6 +630,7 @@ fn test_symlink() {
         true,
         "symlink",
         &[
+            "--regex",
             ".",
             &format!("^{prefix}.*three", prefix = prefix),
             "--full-path",
@@ -622,6 +648,7 @@ fn test_symlink() {
     env.assert_output(
         true,
         &[
+            "--regex",
             &format!("{abs_path}/symlink", abs_path = abs_path),
             &format!("^{prefix}.*symlink.*three", prefix = prefix),
             "--full-path",
@@ -644,7 +671,15 @@ fn test_exec() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--absolute-path", "--exec", "printf", "%s\\n"],
+        &[
+            "--regex",
+            ".",
+            "foo",
+            "--absolute-path",
+            "--exec",
+            "printf",
+            "%s\\n",
+        ],
         &format!(
             "{abs_path}/a.foo
              {abs_path}/one/b.foo
@@ -658,6 +693,7 @@ fn test_exec() {
     env.assert_output(
         true,
         &[
+            "--regex",
             ".",
             "foo",
             "--exec",
@@ -678,7 +714,7 @@ fn test_exec() {
 
     env.assert_output(
         true,
-        &[".", "foo", "--exec", "printf", "%s\\n", "{}"],
+        &["--regex", ".", "foo", "--exec", "printf", "%s\\n", "{}"],
         "./a.foo
          ./one/b.foo
          ./one/two/c.foo
@@ -688,7 +724,7 @@ fn test_exec() {
 
     env.assert_output(
         true,
-        &[".", "α β", "--exec", "printf", "%s.%s\\n"],
+        &["--regex", ".", "α β", "--exec", "printf", "%s.%s\\n"],
         "./α β.",
     );
 }

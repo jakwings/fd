@@ -13,11 +13,19 @@ ff: Just my own fork of [fd] with many incompatible changes. (unstable)
 cargo install ff-find
 ```
 
-## Demo
+## Usage
 
-<a href="https://asciinema.org/a/nn1pW9K6sJV41LodedS46ezQU">
-<img alt="asciicast" height="524" src="https://user-images.githubusercontent.com/23622455/32689551-f89e894e-c721-11e7-8ec7-78013143fd53.png">
-</a>
+ff let you search for files and directories with a glob pattern.
+
+```bash
+ff $HOME '*.txt'
+```
+
+More power (and danger) come with the --regex switch to use regex patterns.
+
+```bash
+ff --regex $HOME '\.txt$'
+```
 
 ## Help
 
@@ -27,11 +35,11 @@ USAGE:
 
 OPTIONS:
     -g, --glob
-            Match the whole file path with a glob pattern. [default: regex]
+            Match the whole file path with a glob pattern. This is the default
+            behavior.
 
     -r, --regex
-            Match the whole file path with a regex pattern. This is the default
-            behavior.
+            Match the whole file path with a regex pattern. [default: glob]
 
     -u, --unicode
             Turn on Unicode support for regex patterns. Character classes are
@@ -127,8 +135,8 @@ ARGS:
 
 ## References
 
-*   Regex Syntax: https://docs.rs/regex/0.2.2/regex/#syntax
 *   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
+*   Regex Syntax: https://docs.rs/regex/0.2.2/regex/#syntax
 
 Note that `ff` cannot enable Unicode support for glob patterns. Also, the
 nitty-gritty of supported syntax may change in the future. There are still some

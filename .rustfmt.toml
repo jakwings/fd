@@ -2,5 +2,5 @@ closure_block_indent_threshold = 1
 reorder_imported_names = false
 reorder_imports = true
 reorder_imports_in_group = true
-required_version = "0.2.13"
+required_version = "0.2.15"
 use_try_shorthand = true

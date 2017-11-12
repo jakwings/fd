@@ -252,7 +252,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     drop(tx);
 
     // Wait for the receiver thread to print out all results.
-    receiver_thread.join().expect("Error: unable to collect search results");
+    receiver_thread
+        .join()
+        .expect("Error: unable to collect search results");
 }
 
 fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {

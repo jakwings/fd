@@ -1,5 +1,5 @@
 [package]
-version = "0.3.2"
+version = "0.4.0"
 name    = "ff-find"
 license = "MIT/Apache-2.0"
 authors = [
@@ -15,8 +15,9 @@ description = "ff is a simple and fast utility for file search on Unix commandli
 categories  = [ "command-line-utilities" ]
 keywords    = [ "search", "find", "file", "filesystem", "tool" ]
 
-[badges.travis-ci]
-repository = "jakwings/ff-find"
+[badges]
+maintenance = { status = "experimental" }
+travis-ci   = { repository = "jakwings/ff-find" }
 
 [[bin]]
 name = "ff"

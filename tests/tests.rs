@@ -256,8 +256,29 @@ fn test_explicit_root_path() {
 fn test_unicode_aware() {
     let env = TestEnv::new();
 
-    env.assert_output(true, &["--regex", ".", "\\xCE"], "./α β");
-    env.assert_output(true, &["--regex", "--unicode", ".", "\\xCE"], "");
+    env.assert_output(true, &["--regex", ".", "^α"], "./α β");
+
+    //env.assert_output(true, &["--regex", ".", "^(?u:α)"], "./α β");
+
+    env.assert_output(true, &["--regex", ".", "^\\xCE"], "./α β");
+
+    env.assert_output(true, &["--regex", "--unicode", ".", "^\\xCE"], "");
+
+    //env.assert_output(true, &["--regex", "--unicode", ".", "^\\xCE\\xB1"], "./α β");
+
+    env.assert_output(
+        true,
+        &["--regex", "--unicode", ".", "^[α β]{3}$"],
+        "./α β",
+    );
+
+    //env.assert_output(true, &["--regex", "--unicode", ".", "^(?-u:α)"], "./α β");
+
+    env.assert_output(
+        true,
+        &["--regex", "--unicode", ".", "^(?-u:\\xCE\\xB1)"],
+        "./α β",
+    );
 }
 
 /// Case sensitivity (--case-sensitive)

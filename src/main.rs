@@ -172,6 +172,7 @@ fn main() {
 
         // XXX: strange conformance to UTF-8
         //      (?u)π or (?u:π) doesn't match π without --unicode?
+        //      (?-u:π) is not allowed with --unicode?
         RegexBuilder::new(&pattern)
     } else {
         let pattern = if let Some(p) = pattern {

@@ -1,5 +1,3 @@
-//use std::ops::Index;
-
 use super::globset;
 use super::regex::bytes::RegexBuilder;
 
@@ -23,8 +21,9 @@ impl GlobBuilder {
             .build()
         {
             Ok(glob) => {
-                // XXX: globset 0.2.1
-                // TODO: How to enable Unicode support? Just rewrite the crate.
+                // TODO: How to enable Unicode support?
+                //       Should rewrite the crate but this is not an easy job due to UTF-8.
+                //use std::ops::Index;
                 //let stub = "(?-u)";
                 //let mut pattern = glob.regex();
                 //if pattern.starts_with(stub) {

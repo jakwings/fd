@@ -21,14 +21,7 @@ impl GlobBuilder {
             .build()
         {
             Ok(glob) => {
-                // TODO: How to enable Unicode support?
-                //       Should rewrite the crate but this is not an easy job due to UTF-8.
-                //use std::ops::Index;
-                //let stub = "(?-u)";
-                //let mut pattern = glob.regex();
-                //if pattern.starts_with(stub) {
-                //    pattern = pattern.index(stub.len()..);
-                //}
+                // TODO: Rewrite the crate to enable Unicode support.
                 let pattern = glob.regex();
 
                 RegexBuilder::new(pattern)

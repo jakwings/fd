@@ -161,24 +161,21 @@ fn main() {
     let pattern = args.value_of_os("PATTERN");
 
     let mut builder = if config.use_regex {
-        if config.unicode {
-            // XXX: strange conformance to UTF-8
-            let pattern = OsStr::to_str(pattern.unwrap_or(OsStr::new("^")))
-                .unwrap_or_else(|| error("Error: need a UTF-8 encoded pattern"));
-
-            RegexBuilder::new(pattern)
+        let pattern = if config.unicode {
+            OsStr::to_os_string(pattern.unwrap_or(OsStr::new("^")))
+                .into_string()
+                .unwrap_or_else(|_| error("Error: need a UTF-8 encoded pattern"))
         } else {
-            // XXX: strange conformance to UTF-8
-            let pattern = escape_pattern(pattern.unwrap_or(OsStr::new("^")))
-                .expect("Error: invalid UTF-8 byte sequences found");
+            escape_pattern(pattern.unwrap_or(OsStr::new("^")))
+                .expect("Error: invalid UTF-8 byte sequences found")
+        };
 
-            RegexBuilder::new(pattern.as_str())
-        }
+        // XXX: strange conformance to UTF-8
+        //      (?u)π or (?u:π) doesn't match π without --unicode?
+        RegexBuilder::new(&pattern)
     } else {
         let pattern = if let Some(p) = pattern {
-            // XXX: strange conformance to UTF-8
-            p.to_str()
-                .unwrap_or_else(|| error("Error: need a UTF-8 encoded pattern"))
+            OsStr::to_str(p).unwrap_or_else(|| error("Error: need a UTF-8 encoded pattern"))
         } else {
             if config.match_full_path {
                 &"**"
@@ -187,6 +184,7 @@ fn main() {
             }
         };
 
+        // XXX: strange conformance to UTF-8
         GlobBuilder::new(pattern, config.match_full_path)
     };
 

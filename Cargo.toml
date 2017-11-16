@@ -32,7 +32,7 @@ atty = "0.2"
 clap = "2"
 ctrlc = "3"
 find_mountpoint = "1"
-globset-jw = { path = "globset", version = "*" }
+globset-jw = "*"
 ignore = "0.3"
 nix = "0.9"
 num_cpus = "1"
@@ -44,3 +44,6 @@ tempdir = "0.3"
 
 [build-dependencies]
 clap = "2"
+
+[patch.crates-io]
+globset-jw = { path = "globset" }

@@ -27,6 +27,16 @@ More power (and danger) come with the --regex switch to use regex patterns.
 ff --regex $HOME '\.txt$'
 ```
 
+Unicode support:
+
+```bash
+ff . '?'            # doen't match filename π
+ff --unicode . '?'  # matches filename π
+
+ff --regex . '^.$'            # doesn't match filename π
+ff --unicode --regex . '^.$'  # matches filename π
+```
+
 ## Help
 
 ```
@@ -42,7 +52,7 @@ OPTIONS:
             Match the whole file path with a regex pattern. [default: glob]
 
     -u, --unicode
-            Turn on Unicode support for regex patterns. Character classes are
+            Turn on Unicode support for search patterns. Character classes are
             not limited to ASCII. Only valid UTF-8 byte sequences can be matched
             by the search pattern.
 
@@ -138,9 +148,8 @@ ARGS:
 *   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
 *   Regex Syntax: https://docs.rs/regex/0.2.2/regex/#syntax
 
-Note that `ff` cannot enable Unicode support for glob patterns. Also, the
-nitty-gritty of supported syntax may change in the future. There are still some
-todos noted in the source code.
+Please note that the nitty-gritty of supported syntax may change in the future.
+There are still some todos noted in the source code.
 
 
 ## License

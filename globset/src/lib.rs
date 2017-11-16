@@ -141,6 +141,8 @@ pub enum ErrorKind {
     /// Occurs when a use of `**` is invalid. Namely, `**` can only appear
     /// adjacent to a path separator, or the beginning/end of a glob.
     InvalidRecursive,
+    /// Occurs when a backslash is not followed by a character.
+    IncompleteEscape,
     /// Occurs when a character class (e.g., `[abc]`) is not closed.
     UnclosedClass,
     /// Occurs when a range in a character (e.g., `[a-z]`) is invalid. For
@@ -182,6 +184,9 @@ impl ErrorKind {
             ErrorKind::InvalidRecursive => {
                 "invalid use of **; must be one path component"
             }
+            ErrorKind::IncompleteEscape => {
+                "expected a character after the backslash"
+            }
             ErrorKind::UnclosedClass => {
                 "unclosed character class; missing ']'"
             }
@@ -219,6 +224,7 @@ impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorKind::InvalidRecursive
+            | ErrorKind::IncompleteEscape
             | ErrorKind::UnclosedClass
             | ErrorKind::UnopenedAlternates
             | ErrorKind::UnclosedAlternates

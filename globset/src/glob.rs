@@ -726,6 +726,13 @@ impl<'a> Parser<'a> {
                 '{' => try!(self.push_alternate()),
                 '}' => try!(self.pop_alternate()),
                 ',' => try!(self.parse_comma()),
+                '\\' => {
+                    if let Some(c) = self.bump() {
+                        try!(self.push_token(Token::Literal(c)))
+                    } else {
+                        return Err(self.error(ErrorKind::IncompleteEscape));
+                    }
+                }
                 c => {
                     if is_separator(c) {
                         // Normalize all patterns to use / as a separator.
@@ -877,7 +884,13 @@ impl<'a> Parser<'a> {
                         in_range = true;
                     }
                 }
-                c => {
+                mut c => {
+                    if c == '\\' {
+                        c = match self.bump() {
+                            Some(c) => c,
+                            None => return Err(self.error(ErrorKind::IncompleteEscape)),
+                        };
+                    }
                     if in_range {
                         // invariant: in_range is only set when there is
                         // already at least one character seen.
@@ -1073,6 +1086,9 @@ mod tests {
     syntax!(cls17, "[a-z0-9]", vec![rclass(&[('a', 'z'), ('0', '9')])]);
     syntax!(cls18, "[!0-9a-z]", vec![rclassn(&[('0', '9'), ('a', 'z')])]);
     syntax!(cls19, "[!a-z0-9]", vec![rclassn(&[('a', 'z'), ('0', '9')])]);
+    syntax!(cls20, r"\\", vec![Literal('\\')]);
+    syntax!(cls21, r"[\\]", vec![class('\\', '\\')]);
+    syntax!(cls22, r"[\-]", vec![class('-', '-')]);
 
     syntaxerr!(err_rseq1, "a**", ErrorKind::InvalidRecursive);
     syntaxerr!(err_rseq2, "**a", ErrorKind::InvalidRecursive);
@@ -1087,6 +1103,8 @@ mod tests {
     syntaxerr!(err_unclosed4, "[!]", ErrorKind::UnclosedClass);
     syntaxerr!(err_range1, "[z-a]", ErrorKind::InvalidRange('z', 'a'));
     syntaxerr!(err_range2, "[z--]", ErrorKind::InvalidRange('z', '-'));
+    syntaxerr!(err_escape1, r"\", ErrorKind::IncompleteEscape);
+    syntaxerr!(err_escape2, r"[\]", ErrorKind::UnclosedClass);
 
     const CASEI: Options = Options {
         casei: true,
@@ -1114,6 +1132,9 @@ mod tests {
     toregex!(re10, "+", r"^\+$");
     toregex!(re11, "**", r"^.*$");
     toregex!(re12, "☃", r"^\xe2\x98\x83$");
+    toregex!(re13, r"\\", r"^\\$");
+    toregex!(re14, r"[\\]", r"^[\\]$");
+    toregex!(re15, r"[\-]", r"^[\-]$");
 
     matches!(match1, "a", "a");
     matches!(match2, "a*b", "a_b");
@@ -1125,6 +1146,7 @@ mod tests {
     matches!(match8, "a*b[xyz]c*d", "abxcdbxcddd");
     matches!(match9, "*.rs", ".rs");
     matches!(match10, "☃", "☃");
+    matches!(match11, r"\\", r"\");
 
     matches!(matchrec1, "some/**/needle.txt", "some/needle.txt");
     matches!(matchrec2, "some/**/needle.txt", "some/one/needle.txt");
@@ -1163,6 +1185,9 @@ mod tests {
     matches!(matchrange10, "[a-c-]", "b");
     matches!(matchrange11, "[-]", "-");
 
+    matches!(matchescape1, r"[\\]", r"\");
+    matches!(matchescape2, r"[\-]", r"-");
+
     matches!(matchpat1, "*hello.txt", "hello.txt");
     matches!(matchpat2, "*hello.txt", "gareth_says_hello.txt");
     matches!(matchpat3, "*hello.txt", "some/path/to/hello.txt");
@@ -1192,6 +1217,10 @@ mod tests {
     matches!(matchalt11, "{*.foo,*.bar,*.wat}", "test.foo");
     matches!(matchalt12, "{*.foo,*.bar,*.wat}", "test.bar");
     matches!(matchalt13, "{*.foo,*.bar,*.wat}", "test.wat");
+    matches!(matchalt14, r"{\\}", r"\");
+    matches!(matchalt15, r"{\,}", r",");
+    matches!(matchalt16, r"{\{}", r"{");
+    matches!(matchalt17, r"{\}}", r"}");
 
     matches!(matchslash1, "abc/def", "abc/def", SLASHLIT);
     #[cfg(unix)]

@@ -1,3 +1,6 @@
+[workspace]
+members = [ "globset" ]
+
 [package]
 version = "0.5.0"
 name    = "ff-find"

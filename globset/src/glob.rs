@@ -189,6 +189,8 @@ pub struct GlobBuilder<'a> {
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 struct GlobOptions {
+    /// Whether to enable Unicode support.
+    unicode: bool,
     /// Whether to match case insensitively.
     case_insensitive: bool,
     /// Whether to require a literal separator to match a separator in a file
@@ -572,6 +574,14 @@ impl<'a> GlobBuilder<'a> {
         }
     }
 
+    /// Toggle whether the pattern matches Unicode scalar values.
+    ///
+    /// This is disabled by default.
+    pub fn unicode(&mut self, yes: bool) -> &mut GlobBuilder<'a> {
+        self.opts.unicode = yes;
+        self
+    }
+
     /// Toggle whether the pattern matches case insensitively or not.
     ///
     /// This is disabled by default.
@@ -593,7 +603,9 @@ impl Tokens {
     /// glob pattern and the options given.
     fn to_regex_with(&self, options: &GlobOptions) -> String {
         let mut re = String::new();
-        re.push_str("(?-u)");
+        if !options.unicode {
+            re.push_str("(?-u)");
+        }
         if options.case_insensitive {
             re.push_str("(?i)");
         }
@@ -619,7 +631,11 @@ impl Tokens {
         for tok in tokens {
             match *tok {
                 Token::Literal(c) => {
-                    re.push_str(&char_to_escaped_literal(c));
+                    if !options.unicode {
+                        re.push_str(&char_to_escaped_literal(c));
+                    } else {
+                        re.push_str(&regex::escape(&c.to_string()));
+                    }
                 }
                 Token::Any => {
                     if options.literal_separator {
@@ -650,13 +666,23 @@ impl Tokens {
                         re.push('^');
                     }
                     for r in ranges {
-                        if r.0 == r.1 {
-                            // Not strictly necessary, but nicer to look at.
-                            re.push_str(&char_to_escaped_literal(r.0));
+                        if !options.unicode {
+                            if r.0 == r.1 {
+                                // Not strictly necessary, but nicer to look at.
+                                re.push_str(&char_to_escaped_literal(r.0));
+                            } else {
+                                re.push_str(&char_to_escaped_literal(r.0));
+                                re.push('-');
+                                re.push_str(&char_to_escaped_literal(r.1));
+                            }
                         } else {
-                            re.push_str(&char_to_escaped_literal(r.0));
-                            re.push('-');
-                            re.push_str(&char_to_escaped_literal(r.1));
+                            if r.0 == r.1 {
+                                re.push_str(&regex::escape(&r.0.to_string()));
+                            } else {
+                                re.push_str(&regex::escape(&r.0.to_string()));
+                                re.push('-');
+                                re.push_str(&regex::escape(&r.1.to_string()));
+                            }
                         }
                     }
                     re.push(']');
@@ -945,6 +971,7 @@ mod tests {
 
     #[derive(Clone, Copy, Debug, Default)]
     struct Options {
+        utf8: bool,
         casei: bool,
         litsep: bool,
     }
@@ -977,11 +1004,16 @@ mod tests {
             #[test]
             fn $name() {
                 let pat = GlobBuilder::new($pat)
+                    .unicode($options.utf8)
                     .case_insensitive($options.casei)
                     .literal_separator($options.litsep)
                     .build()
                     .unwrap();
-                assert_eq!(format!("(?-u){}", $re), pat.regex());
+                if !$options.utf8 {
+                    assert_eq!(format!("(?-u){}", $re), pat.regex());
+                } else {
+                    assert_eq!(format!("{}", $re), pat.regex());
+                }
             }
         };
     }
@@ -994,6 +1026,7 @@ mod tests {
             #[test]
             fn $name() {
                 let pat = GlobBuilder::new($pat)
+                    .unicode($options.utf8)
                     .case_insensitive($options.casei)
                     .literal_separator($options.litsep)
                     .build()
@@ -1016,6 +1049,7 @@ mod tests {
             #[test]
             fn $name() {
                 let pat = GlobBuilder::new($pat)
+                    .unicode($options.utf8)
                     .case_insensitive($options.casei)
                     .literal_separator($options.litsep)
                     .build()
@@ -1089,6 +1123,8 @@ mod tests {
     syntax!(cls20, r"\\", vec![Literal('\\')]);
     syntax!(cls21, r"[\\]", vec![class('\\', '\\')]);
     syntax!(cls22, r"[\-]", vec![class('-', '-')]);
+    syntax!(cls23, "☃", vec![Literal('☃')]);
+    syntax!(cls24, "[☃]", vec![class('☃', '☃')]);
 
     syntaxerr!(err_rseq1, "a**", ErrorKind::InvalidRecursive);
     syntaxerr!(err_rseq2, "**a", ErrorKind::InvalidRecursive);
@@ -1107,12 +1143,19 @@ mod tests {
     syntaxerr!(err_escape2, r"[\]", ErrorKind::UnclosedClass);
 
     const CASEI: Options = Options {
+        utf8: false,
         casei: true,
         litsep: false,
     };
     const SLASHLIT: Options = Options {
+        utf8: false,
         casei: false,
         litsep: true,
+    };
+    const UNICODE: Options = Options {
+        utf8: true,
+        casei: false,
+        litsep: false,
     };
 
     toregex!(re_casei, "a", "(?i)^a$", &CASEI);
@@ -1135,6 +1178,9 @@ mod tests {
     toregex!(re13, r"\\", r"^\\$");
     toregex!(re14, r"[\\]", r"^[\\]$");
     toregex!(re15, r"[\-]", r"^[\-]$");
+
+    toregex!(re_unicode1, "☃", "^☃$", UNICODE);
+    toregex!(re_unicode2, "[☃]", "^[☃]$", UNICODE);
 
     matches!(match1, "a", "a");
     matches!(match2, "a*b", "a_b");
@@ -1187,6 +1233,10 @@ mod tests {
 
     matches!(matchescape1, r"[\\]", r"\");
     matches!(matchescape2, r"[\-]", r"-");
+
+    matches!(matchunicode1, "☃", "☃", UNICODE);
+    matches!(matchunicode2, "[☃]", "☃", UNICODE);
+    matches!(matchunicode3, "^[☃]$", "^☃$", UNICODE);
 
     matches!(matchpat1, "*hello.txt", "hello.txt");
     matches!(matchpat2, "*hello.txt", "gareth_says_hello.txt");
@@ -1272,6 +1322,7 @@ mod tests {
             #[test]
             fn $name() {
                 let pat = GlobBuilder::new($pat)
+                    .unicode($opts.utf8)
                     .case_insensitive($opts.casei)
                     .literal_separator($opts.litsep)
                     .build().unwrap();

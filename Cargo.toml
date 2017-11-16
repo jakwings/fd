@@ -47,3 +47,6 @@ clap = "2"
 
 [patch.crates-io]
 globset-jw = { path = "globset" }
+
+[features]
+simd-accel = [ "globset-jw/simd-accel" ]

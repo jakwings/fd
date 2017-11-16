@@ -140,7 +140,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "unicode",
         "Match UTF-8 scalar values [default: match bytes]",
-        "Turn on Unicode support for regex patterns. Character classes are not limited to ASCII. \
+        "Turn on Unicode support for search patterns. Character classes are not limited to ASCII. \
          Only valid UTF-8 byte sequences can be matched by the search pattern."
     );
 

@@ -256,6 +256,10 @@ fn test_explicit_root_path() {
 fn test_unicode_aware() {
     let env = TestEnv::new();
 
+    env.assert_output(true, &["--glob", ".", "α??"], "");
+
+    env.assert_output(true, &["--glob", "--unicode", ".", "α??"], "./α β");
+
     env.assert_output(true, &["--regex", ".", "^α"], "./α β");
 
     //env.assert_output(true, &["--regex", ".", "^(?u:α)"], "./α β");

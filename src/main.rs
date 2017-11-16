@@ -186,11 +186,11 @@ fn main() {
         };
 
         // XXX: strange conformance to UTF-8
-        GlobBuilder::new(pattern, config.match_full_path)
+        GlobBuilder::new(pattern, &config)
     };
 
     match builder
-        .unicode(config.use_regex && config.unicode)
+        .unicode(config.unicode)
         .case_insensitive(config.case_insensitive)
         .dot_matches_new_line(true)
         .build()
@@ -209,6 +209,7 @@ fn escape_pattern(pattern: &OsStr) -> Option<String> {
 
         if c <= 0x1F || c >= 0x7F {
             let mut buff = format!("\\x{:02X}", c);
+
             bytes.append(unsafe { buff.as_mut_vec() });
         } else {
             bytes.push(c);

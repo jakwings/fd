@@ -7,6 +7,15 @@ authors = [
     "J.W <jakwings@gmail.com>",
 ]
 
+include = [
+  "/Cargo.toml",
+  "/src/**/*",
+  "/build.rs",
+  "/shell_completion",
+  "/README*",
+  "/LICENSE*",
+]
+
 build       = "build.rs"
 readme      = "README.md"
 homepage    = "https://github.com/jakwings/ff-find"

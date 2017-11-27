@@ -1,7 +1,6 @@
 use std::env::current_dir;
 use std::fs;
 use std::io;
-#[cfg(any(unix, target_os = "redox"))]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 

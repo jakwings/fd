@@ -18,17 +18,16 @@ use super::output;
 
 #[derive(Clone, Copy, PartialEq)]
 enum BufferTime {
-    Duration, // End buffering mode after this duration.
-    Eternity, // Always buffer the search results.
+    Duration,  // End buffering mode after this duration.
+    Eternity,  // Always buffer the search results.
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum ReceiverMode {
-    Buffering(BufferTime), // Receiver is still buffering in order to sort the results.
-    Streaming,             // Receiver is directly printing search results to the output.
+    Buffering(BufferTime),  // Receiver is still buffering in order to sort the results.
+    Streaming,              // Receiver is directly printing search results to the output.
 }
 
-/// The type of file to search for.
 #[derive(Clone, Copy, PartialEq)]
 pub enum FileType {
     Any,
@@ -48,7 +47,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     let threads = config.threads;
 
     // The root directory of the file system,
-    // similar to PrefixComponent (C:\, D:\, \\server\share, etc.) on Windows.
+    // similar to PrefixComponent (C:, D:, \\server\share, etc.) on Windows.
     let mountpoint = if config.same_filesystem {
         find_mountpoint(&root).unwrap_or_else(|_| {
             error(&format!(
@@ -86,7 +85,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 let cmd = Arc::clone(&cmd);
                 let quitting = Arc::clone(&quitting);
 
-                // Spawn a job thread that will listen for and execute inputs.
+                // Spawn a job thread that will listen for input and execute commands.
                 let handle = thread::spawn(move || exec::schedule(rx, cmd, quitting));
 
                 // Push the handle of the spawned thread into the vector for later joining.
@@ -136,9 +135,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             }
 
             if !buffer.is_empty() {
-                // TODO: parallel sort?
                 // Stable sort is fast enough for nearly sorted items,
                 // although it uses 50% more memory than unstable sort.
+                // Would parallel sort really help much? Skeptical.
                 buffer.sort();
                 for value in buffer {
                     output::print_entry(&value, &rx_config, &quitting);

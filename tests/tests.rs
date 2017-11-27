@@ -17,7 +17,6 @@ fn get_test_root(env: &TestEnv) -> String {
         .to_string()
 }
 
-/// Simple tests
 #[test]
 fn test_simple() {
     let env = TestEnv::new();
@@ -40,7 +39,6 @@ fn test_simple() {
     );
 }
 
-/// Glob searches (--glob)
 #[test]
 fn test_glob_searches() {
     let env = TestEnv::new();
@@ -145,7 +143,6 @@ fn test_glob_searches() {
     );
 }
 
-/// Regex searches (--regex)
 #[test]
 fn test_regex_searches() {
     let env = TestEnv::new();
@@ -207,7 +204,6 @@ fn test_regex_searches() {
     );
 }
 
-/// Explicit root path
 #[test]
 fn test_explicit_root_path() {
     let env = TestEnv::new();
@@ -251,7 +247,6 @@ fn test_explicit_root_path() {
     );
 }
 
-/// Match Unicode string (--unicode)
 #[test]
 fn test_unicode_aware() {
     let env = TestEnv::new();
@@ -285,7 +280,6 @@ fn test_unicode_aware() {
     );
 }
 
-/// Case sensitivity (--case-sensitive)
 #[test]
 fn test_case_sensitive() {
     let env = TestEnv::new();
@@ -309,7 +303,6 @@ fn test_case_sensitive() {
     );
 }
 
-/// Case insensitivity (--ignore-case)
 #[test]
 fn test_case_insensitive() {
     let env = TestEnv::new();
@@ -329,7 +322,6 @@ fn test_case_insensitive() {
     );
 }
 
-/// Full path search (--full-path)
 #[test]
 fn test_full_path() {
     let env = TestEnv::new();
@@ -350,7 +342,6 @@ fn test_full_path() {
     );
 }
 
-/// Hidden files (--all)
 #[test]
 fn test_hidden() {
     let env = TestEnv::new();
@@ -379,7 +370,6 @@ fn test_hidden() {
     );
 }
 
-/// Ignored files (--no-ignore)
 #[test]
 fn test_no_ignore() {
     let env = TestEnv::new();
@@ -396,7 +386,6 @@ fn test_no_ignore() {
     );
 }
 
-/// Symlinks (--follow)
 #[test]
 fn test_follow() {
     let env = TestEnv::new();
@@ -409,7 +398,6 @@ fn test_follow() {
     );
 }
 
-/// Null separator (--print0)
 #[test]
 fn test_print0() {
     let env = TestEnv::new();
@@ -425,7 +413,6 @@ fn test_print0() {
     );
 }
 
-/// Maximum depth (--max-depth)
 #[test]
 fn test_max_depth() {
     let env = TestEnv::new();
@@ -470,7 +457,6 @@ fn test_max_depth() {
     env.assert_output(true, &["--max-depth", "0"], "");
 }
 
-/// Absolute paths (--absolute-path)
 #[test]
 fn test_absolute_path() {
     let env = TestEnv::new();
@@ -524,7 +510,6 @@ fn test_absolute_path() {
     );
 }
 
-/// Sort paths (--sort-path)
 #[test]
 fn test_sort_path() {
     let env = TestEnv::new();
@@ -547,7 +532,6 @@ fn test_sort_path() {
     );
 }
 
-/// File type filter (--type)
 #[test]
 fn test_type() {
     let env = TestEnv::new();
@@ -578,7 +562,6 @@ fn test_type() {
     env.assert_output(true, &["--type", "x"], "./a.foo");
 }
 
-/// Symlinks misc
 #[test]
 fn test_symlink() {
     let env = TestEnv::new();
@@ -687,7 +670,6 @@ fn test_symlink() {
     );
 }
 
-/// Command execution (--exec)
 #[test]
 fn test_exec() {
     let env = TestEnv::new();

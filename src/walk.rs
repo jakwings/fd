@@ -78,18 +78,16 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             let shared_rx = Arc::new(Mutex::new(rx));
 
             let cmd = Arc::new(cmd.clone());
-            let out_lock = Arc::new(Mutex::new(()));
 
             // Each spawned job will store it's thread handle in here.
             let mut handles = Vec::with_capacity(threads);
             for _ in 0..threads {
                 let rx = Arc::clone(&shared_rx);
                 let cmd = Arc::clone(&cmd);
-                let out_lock = Arc::clone(&out_lock);
                 let quitting = Arc::clone(&quitting);
 
                 // Spawn a job thread that will listen for and execute inputs.
-                let handle = thread::spawn(move || exec::schedule(rx, cmd, out_lock, quitting));
+                let handle = thread::spawn(move || exec::schedule(rx, cmd, quitting));
 
                 // Push the handle of the spawned thread into the vector for later joining.
                 handles.push(handle);

@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use super::ticket::ExecTicket;
@@ -45,15 +45,10 @@ impl ExecTemplate {
         ExecTemplate { argv }
     }
 
-    pub fn generate(
-        &self,
-        path: &Path,
-        out_lock: Arc<Mutex<()>>,
-        quitting: Arc<AtomicBool>,
-    ) -> ExecTicket {
+    pub fn generate(&self, path: &Path, quitting: Arc<AtomicBool>) -> ExecTicket {
         let command = self.apply(path);
 
-        ExecTicket::new(command, out_lock, quitting)
+        ExecTicket::new(command, quitting)
     }
 
     fn apply(&self, path: &Path) -> ExecCommand {

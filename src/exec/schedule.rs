@@ -11,7 +11,6 @@ use super::ExecTemplate;
 pub fn schedule(
     rx: Arc<Mutex<Receiver<PathBuf>>>,
     cmd: Arc<ExecTemplate>,
-    out_lock: Arc<Mutex<()>>,
     quitting: Arc<AtomicBool>,
 ) {
     loop {
@@ -28,7 +27,6 @@ pub fn schedule(
         // Drop the lock so that other threads can read from the the receiver.
         drop(lock);
 
-        cmd.generate(&path, Arc::clone(&out_lock), Arc::clone(&quitting))
-            .execute();
+        cmd.generate(&path, Arc::clone(&quitting)).execute();
     }
 }

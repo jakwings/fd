@@ -11,7 +11,7 @@ include = [
   "/Cargo.toml",
   "/src/**/*",
   "/build.rs",
-  "/shell_completion",
+  "/shell_completion/*",
   "/README*",
   "/LICENSE*",
 ]

@@ -98,7 +98,7 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
         } else if open {
             // TODO: throw errors for broken and unrecognized {patterns}
             buffer.push("{");
-        }
+        }  // else TODO: an unmatched "}" is "broken" too
     }
 
     buffer

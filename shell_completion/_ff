@@ -1,0 +1,74 @@
+#compdef ff
+
+_ff() {
+    typeset -A opt_args
+    local ret=1
+
+    local context curcontext="$curcontext" state line
+    _arguments -s -S -C \
+'-t+[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
+'--type+[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
+'-d+[Set maximum search depth. \[default: none\]]' \
+'--max-depth+[Set maximum search depth. \[default: none\]]' \
+'-c+[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
+'--color+[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
+'-j+[Set number of threads for searching and command execution.]' \
+'--threads+[Set number of threads for searching and command execution.]' \
+'--max-buffer-time+[Set time (in milliseconds) for buffering and sorting.]' \
+'-x+[Execute the given command for each search result.]' \
+'--exec+[Execute the given command for each search result.]' \
+'-g[Search with a glob pattern. \[default\]]' \
+'--glob[Search with a glob pattern. \[default\]]' \
+'-r[Search with a regex pattern. \[default: glob\]]' \
+'--regex[Search with a regex pattern. \[default: glob\]]' \
+'-u[Match UTF-8 scalar values \[default: match bytes\]]' \
+'--unicode[Match UTF-8 scalar values \[default: match bytes\]]' \
+'-i[Case-insensitive search. \[default: case-sensitive\]]' \
+'--ignore-case[Case-insensitive search. \[default: case-sensitive\]]' \
+'-s[Case-sensitive search. \[default\]]' \
+'--case-sensitive[Case-sensitive search. \[default\]]' \
+'-p[Match full paths. \[default: match filename\]]' \
+'--full-path[Match full paths. \[default: match filename\]]' \
+'-L[Follow symbolic links.]' \
+'--follow[Follow symbolic links.]' \
+'-M[Do not descend into directories on other filesystems.]' \
+'--mount[Do not descend into directories on other filesystems.]' \
+'-0[Terminate each search result with NUL.]' \
+'--print0[Terminate each search result with NUL.]' \
+'-A[Output absolute paths instead of relative paths.]' \
+'--absolute-path[Output absolute paths instead of relative paths.]' \
+'-S[Sort the results by pathname.]' \
+'--sort-path[Sort the results by pathname.]' \
+'-a[Include dot-files in the search.]' \
+'--all[Include dot-files in the search.]' \
+'-I[Do not respect .(git)ignore files.]' \
+'--no-ignore[Do not respect .(git)ignore files.]' \
+'-h[Prints help information. Use --help for more details.]' \
+'--help[Prints help information. Use --help for more details.]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+"1:: :_ff_commands" \
+&& ret=0
+    
+}
+
+(( $+functions[_ff_commands] )) ||
+_ff_commands() {
+    local commands; commands=(
+        "DIRECTORY:The root directory for the filesystem search. \[optional\]" \
+"PATTERN:The search pattern, a regex or glob pattern. \[optional\]
+The default values for regex and glob are ^ and * respectively." \
+    )
+    _describe -t commands 'ff commands' commands "$@"
+}
+(( $+functions[_ff_commands] )) ||
+_ff_commands() {
+    local commands; commands=(
+        "DIRECTORY:The root directory for the filesystem search. \[optional\]" \
+"PATTERN:The search pattern, a regex or glob pattern. \[optional\]
+The default values for regex and glob are ^ and * respectively." \
+    )
+    _describe -t commands 'ff commands' commands "$@"
+}
+
+_ff "$@"

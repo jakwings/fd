@@ -36,6 +36,14 @@ fn print_entry_colorized(
     ls_colors: &LsColors,
     quitting: &Arc<AtomicBool>,
 ) -> io::Result<()> {
+    // SIGINT: Exit before or after colorized output is completely written out.
+    if quitting.load(atomic::Ordering::Relaxed) {
+        // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
+        // XXX: https://github.com/rust-lang/rust/issues/33417
+        let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
+        exit(0x80 + signum);
+    }
+
     let main_separator = path::MAIN_SEPARATOR.to_string();
 
     let default_style = Style::default();
@@ -70,14 +78,6 @@ fn print_entry_colorized(
     } else {
         buffer.push(b'\n');
     };
-
-    // SIGINT: Exit before or after colorized output is completely written out.
-    if quitting.load(atomic::Ordering::Relaxed) {
-        // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
-        // XXX: https://github.com/rust-lang/rust/issues/33417
-        let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
-        exit(0x80 + signum);
-    }
 
     io::stdout().write_all(&buffer.into_boxed_slice())
 }

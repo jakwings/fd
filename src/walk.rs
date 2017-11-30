@@ -1,5 +1,6 @@
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::channel;
@@ -9,6 +10,7 @@ use std::time;
 use super::ctrlc;
 use super::find_mountpoint::find_mountpoint;
 use super::ignore::{WalkState, WalkBuilder};
+use super::nix::sys::signal::Signal::SIGINT;
 use super::regex::bytes::Regex;
 
 use super::exec;
@@ -61,9 +63,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
     // A signal to tell the colorizer or the command processor to exit gracefully.
     let quitting = Arc::new(AtomicBool::new(false));
-
-    if config.ls_colors.is_some() {
-        let atom = quitting.clone();
+    let quitting2 = Arc::clone(&quitting);
+    {
+        let atom = Arc::clone(&quitting);
         ctrlc::set_handler(move || {
             atom.store(true, atomic::Ordering::Relaxed);
         }).expect("Error: cannot set Ctrl-C handler");
@@ -166,7 +168,13 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let root = root.to_owned();
         let mountpoint = mountpoint.to_owned();
 
+        let quitting = Arc::clone(&quitting2);
         Box::new(move |entry_o| {
+            if quitting.load(atomic::Ordering::Relaxed) {
+                let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
+                exit(0x80 + signum);
+            }
+
             let entry = match entry_o {
                 Ok(e) => e,
                 Err(_) => return WalkState::Continue,

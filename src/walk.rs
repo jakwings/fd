@@ -168,11 +168,14 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let root = root.to_owned();
         let mountpoint = mountpoint.to_owned();
 
+        let mut counter = 0;
         let quitting = Arc::clone(&quitting2);
         Box::new(move |entry_o| {
-            if quitting.load(atomic::Ordering::Relaxed) {
+            if counter >= 1000 && quitting.load(atomic::Ordering::Relaxed) {
                 let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
                 exit(0x80 + signum);
+            } else {
+                counter = if counter < 1000 { counter + 1 } else { 1 };
             }
 
             let entry = match entry_o {

@@ -20,14 +20,14 @@ use super::output;
 
 #[derive(Clone, Copy, PartialEq)]
 enum BufferTime {
-    Duration,  // End buffering mode after this duration.
-    Eternity,  // Always buffer the search results.
+    Duration, // End buffering mode after this duration.
+    Eternity, // Always buffer the search results.
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum ReceiverMode {
-    Buffering(BufferTime),  // Receiver is still buffering in order to sort the results.
-    Streaming,              // Receiver is directly printing search results to the output.
+    Buffering(BufferTime), // Receiver is still buffering in order to sort the results.
+    Streaming,             // Receiver is directly printing search results to the output.
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -37,6 +37,19 @@ pub enum FileType {
     Regular,
     SymLink,
     Executable,
+}
+
+pub fn exit_if_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) {
+    static MAX: u32 = 500;
+
+    if *counter >= MAX && quitting.load(atomic::Ordering::Relaxed) {
+        // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
+        // XXX: https://github.com/rust-lang/rust/issues/33417
+        let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
+        exit(0x80 + signum);
+    } else {
+        *counter = if *counter < MAX { *counter + 1 } else { 1 };
+    }
 }
 
 // Recursively scan the given search path for files/pathnames matching the pattern.
@@ -85,10 +98,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             for _ in 0..threads {
                 let rx = Arc::clone(&shared_rx);
                 let cmd = Arc::clone(&cmd);
-                let quitting = Arc::clone(&quitting);
 
                 // Spawn a job thread that will listen for input and execute commands.
-                let handle = thread::spawn(move || exec::schedule(rx, cmd, quitting));
+                let handle = thread::spawn(move || exec::schedule(rx, cmd));
 
                 // Push the handle of the spawned thread into the vector for later joining.
                 handles.push(handle);
@@ -119,7 +131,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
                             if time::Instant::now() - start > max_buffer_time {
                                 for v in &buffer {
-                                    output::print_entry(&v, &rx_config, &quitting);
+                                    output::print_entry(&v, &rx_config);
                                 }
                                 buffer.clear();
 
@@ -131,7 +143,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                         }
                     },
                     ReceiverMode::Streaming => {
-                        output::print_entry(&value, &rx_config, &quitting);
+                        output::print_entry(&value, &rx_config);
                     }
                 }
             }
@@ -141,8 +153,11 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 // although it uses 50% more memory than unstable sort.
                 // Would parallel sort really help much? Skeptical.
                 buffer.sort();
+
+                let mut counter = 0;
                 for value in buffer {
-                    output::print_entry(&value, &rx_config, &quitting);
+                    exit_if_sigint(&quitting, &mut counter);
+                    output::print_entry(&value, &rx_config);
                 }
             }
         }
@@ -171,12 +186,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let mut counter = 0;
         let quitting = Arc::clone(&quitting2);
         Box::new(move |entry_o| {
-            if counter >= 1000 && quitting.load(atomic::Ordering::Relaxed) {
-                let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
-                exit(0x80 + signum);
-            } else {
-                counter = if counter < 1000 { counter + 1 } else { 1 };
-            }
+            exit_if_sigint(&quitting, &mut counter);
 
             let entry = match entry_o {
                 Ok(e) => e,

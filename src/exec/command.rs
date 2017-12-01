@@ -1,10 +1,8 @@
 use std::ffi::{OsStr, OsString};
+use std::io;
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-
-use super::ticket::ExecTicket;
+use std::process::{Command, ExitStatus};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExecCommand {
@@ -18,6 +16,13 @@ impl ExecCommand {
 
     pub fn args(&self) -> &[OsString] {
         &self.argv[1..]
+    }
+
+    pub fn execute(&self) -> io::Result<ExitStatus> {
+        Command::new(self.prog())
+            .args(self.args())
+            .spawn()
+            .and_then(|mut child| child.wait())
     }
 }
 
@@ -45,13 +50,7 @@ impl ExecTemplate {
         ExecTemplate { argv }
     }
 
-    pub fn generate(&self, path: &Path, quitting: Arc<AtomicBool>) -> ExecTicket {
-        let command = self.apply(path);
-
-        ExecTicket::new(command, quitting)
-    }
-
-    fn apply(&self, path: &Path) -> ExecCommand {
+    pub fn apply(&self, path: &Path) -> ExecCommand {
         ExecCommand {
             argv: self.argv.iter().map(|arg| clear_stubs(arg, path)).collect(),
         }
@@ -98,7 +97,7 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
         } else if open {
             // TODO: throw errors for broken and unrecognized {patterns}
             buffer.push("{");
-        }  // else TODO: an unmatched "}" is "broken" too
+        } // else TODO: an unmatched "}" is "broken" too
     }
 
     buffer

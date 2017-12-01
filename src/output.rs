@@ -3,19 +3,17 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::{self, Path, PathBuf};
 use std::path::Component::{Prefix, RootDir};
 use std::process::exit;
-use std::sync::Arc;
-use std::sync::atomic::{self, AtomicBool};
 
 use super::ansi_term::Style;
-use super::nix::sys::signal::Signal::{SIGINT, SIGPIPE};
+use super::nix::sys::signal::Signal::SIGPIPE;
 
 use super::fshelper::{is_executable, is_symlink};
 use super::internal::{AppOptions, error};
 use super::lscolors::LsColors;
 
-pub fn print_entry(entry: &Path, config: &AppOptions, quitting: &Arc<AtomicBool>) {
+pub fn print_entry(entry: &Path, config: &AppOptions) {
     let result = if let Some(ref ls_colors) = config.ls_colors {
-        print_entry_colorized(entry, config, ls_colors, quitting)
+        print_entry_colorized(entry, config, ls_colors)
     } else {
         print_entry_uncolorized(entry, config)
     };
@@ -30,20 +28,7 @@ pub fn print_entry(entry: &Path, config: &AppOptions, quitting: &Arc<AtomicBool>
     }
 }
 
-fn print_entry_colorized(
-    path: &Path,
-    config: &AppOptions,
-    ls_colors: &LsColors,
-    quitting: &Arc<AtomicBool>,
-) -> io::Result<()> {
-    // SIGINT: Exit before or after colorized output is completely written out.
-    if quitting.load(atomic::Ordering::Relaxed) {
-        // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
-        // XXX: https://github.com/rust-lang/rust/issues/33417
-        let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
-        exit(0x80 + signum);
-    }
-
+fn print_entry_colorized(path: &Path, config: &AppOptions, ls_colors: &LsColors) -> io::Result<()> {
     let main_separator = path::MAIN_SEPARATOR.to_string();
 
     let default_style = Style::default();

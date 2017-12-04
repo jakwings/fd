@@ -13,6 +13,12 @@ ff: Just my own fork of [fd] with many incompatible changes. (unstable)
 cargo install ff-find
 ```
 
+or when SIMD acceleration is possible:
+
+```
+cargo install --features simd-accel ff-find
+```
+
 ## Usage
 
 ff let you search for files and directories with a glob pattern.
@@ -34,8 +40,10 @@ ff . '?'            # doen't match filename π
 ff --unicode . '?'  # matches filename π
 
 ff --regex . '^.$'            # doesn't match filename π
-ff --unicode --regex . '^.$'  # matches filename π
+ff --regex --unicode . '^.$'  # matches filename π
 ```
+
+This is because the pattern matches byte string by default.
 
 ## Help
 
@@ -146,7 +154,9 @@ ARGS:
 ## References
 
 *   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
-*   Regex Syntax: https://docs.rs/regex/0.2.2/regex/#syntax
+    *   Note: ff uses a variant of *globset*, which allows "backslash escape",
+        i.e. `\<char>` drops the `\` and removes special effect of a character.
+*   Regex Syntax: https://docs.rs/regex/0.2.3/regex/#syntax
 
 Please note that the nitty-gritty of supported syntax may change in the future.
 There are still some todos noted in the source code.

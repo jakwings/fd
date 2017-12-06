@@ -43,7 +43,7 @@ ff --regex . '^.$'            # doesn't match filename π
 ff --regex --unicode . '^.$'  # matches filename π
 ```
 
-This is because the pattern matches byte string by default.
+This is because the pattern matches byte strings by default.
 
 ## Help
 
@@ -132,6 +132,10 @@ OPTIONS:
             does not contain any {}, then a {} will be appended as an argument
             to the program. A single semicolon ; will terminate the argument
             list.
+
+    -v, --verbose
+            Show warnings about file permissions, loops caused by symlinks, I/O
+            errors, invalid file content, etc.
 
     -h, --help
             Prints help information. Use --help for more details.

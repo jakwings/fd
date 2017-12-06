@@ -15,7 +15,7 @@ use super::regex::bytes::Regex;
 
 use super::exec;
 use super::fshelper::{is_executable, to_absolute_path};
-use super::internal::{AppOptions, error};
+use super::internal::{AppOptions, error, warn};
 use super::output;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -190,8 +190,17 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
             // https://docs.rs/walkdir/2.0.1/walkdir/struct.DirEntry.html
             let entry = match entry_o {
-                Ok(ref entry) if entry.depth() != 0 => entry,
-                _ => return WalkState::Continue,
+                Ok(ref entry) => if entry.depth() != 0 {
+                    entry
+                } else {
+                    return WalkState::Continue;
+                },
+                Err(ref err) => {
+                    if config.verbose {
+                        warn(&err.to_string())
+                    }
+                    return WalkState::Continue;
+                }
             };
             let entry_path = entry.path();
 
@@ -208,10 +217,13 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                                 meta.is_dir() || !is_executable(&meta)
                             } else {
                                 if !file_type.is_symlink() {
-                                    error(&format!(
-                                        "cannot get metadata of {:?}",
-                                        entry_path.as_os_str()
-                                    ))
+                                    if config.verbose {
+                                        warn(&format!(
+                                            "cannot get metadata of {:?}",
+                                            entry_path.as_os_str()
+                                        ));
+                                    }
+                                    return WalkState::Continue;
                                 } else {
                                     // symlinks to non-existent files
                                     true
@@ -223,10 +235,13 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                         return WalkState::Continue;
                     }
                 } else {
-                    error(&format!(
-                        "cannot get file type of {:?}",
-                        entry_path.as_os_str()
-                    ));
+                    if config.verbose {
+                        warn(&format!(
+                            "cannot get file type of {:?}",
+                            entry_path.as_os_str()
+                        ));
+                    }
+                    return WalkState::Continue;
                 }
             }
 

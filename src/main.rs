@@ -139,6 +139,7 @@ fn main() {
     });
 
     let config = AppOptions {
+        verbose: args.is_present("verbose"),
         unicode: args.is_present("unicode"),
         use_regex: args.is_present("use-regex"),
         case_insensitive: args.is_present("ignore-case"),

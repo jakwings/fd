@@ -127,6 +127,7 @@ pub fn build() -> App<'static, 'static> {
                 .value_terminator(";")
                 .min_values(1),
         )
+        .arg(arg("verbose").long("verbose").short("v"))
         .arg(arg("DIRECTORY").default_value(".").empty_values(false))
         .arg(arg("PATTERN"))
 }
@@ -292,6 +293,14 @@ fn get_help() -> HashMap<&'static str, Help> {
          braces {} in the command. If the command does not contain any {}, then a {} will be \
          appended as an argument to the program. A single semicolon ; will terminate the \
          argument list."
+    );
+
+    doc!(
+        help,
+        "verbose",
+        "Warn about I/O errors, file permissions, symlink loops, etc.",
+        "Show warnings about file permissions, loops caused by symlinks, I/O errors, \
+         invalid file content, etc."
     );
 
     doc!(

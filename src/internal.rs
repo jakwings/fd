@@ -8,6 +8,9 @@ use super::lscolors::LsColors;
 use super::walk::FileType;
 
 pub struct AppOptions {
+    // Whether to show warnings about permissions, I/O errors, detected loops, etc.
+    pub verbose: bool,
+
     // Whether the search pattern is Unicode-aware by default.
     pub unicode: bool,
 
@@ -63,6 +66,10 @@ pub struct AppOptions {
 pub fn error(message: &str) -> ! {
     writeln!(&mut ::std::io::stderr(), "Error: {}", message).expect("write to stderr");
     process::exit(1)
+}
+
+pub fn warn(message: &str) {
+    writeln!(&mut ::std::io::stderr(), "Warning: {}", message).expect("write to stderr");
 }
 
 pub fn int_error(name: &str, num_str: &str, message: &str) -> ! {

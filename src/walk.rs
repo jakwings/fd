@@ -180,7 +180,6 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let config = Arc::clone(&config);
         let pattern = Arc::clone(&pattern);
         let tx = tx.clone();
-        let root = root.to_owned();
         let mountpoint = mountpoint.to_owned();
 
         let mut counter = 0;
@@ -188,15 +187,12 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         Box::new(move |entry_o| {
             exit_if_sigint(&quitting, &mut counter);
 
+            // https://docs.rs/walkdir/2.0.1/walkdir/struct.DirEntry.html
             let entry = match entry_o {
-                Ok(e) => e,
-                Err(_) => return WalkState::Continue,
+                Ok(ref entry) if entry.depth() != 0 => entry,
+                _ => return WalkState::Continue,
             };
             let entry_path = entry.path();
-
-            if entry_path == root {
-                return WalkState::Continue;
-            }
 
             if config.file_type != FileType::Any {
                 if let Some(file_type) = entry.file_type() {

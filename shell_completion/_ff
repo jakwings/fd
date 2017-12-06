@@ -43,6 +43,8 @@ _ff() {
 '--all[Include dot-files in the search.]' \
 '-I[Do not respect .(git)ignore files.]' \
 '--no-ignore[Do not respect .(git)ignore files.]' \
+'-v[Warn about I/O errors, file permissions, symlink loops, etc.]' \
+'--verbose[Warn about I/O errors, file permissions, symlink loops, etc.]' \
 '-h[Prints help information. Use --help for more details.]' \
 '--help[Prints help information. Use --help for more details.]' \
 '-V[Prints version information]' \

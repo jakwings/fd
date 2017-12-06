@@ -39,7 +39,7 @@ pub enum FileType {
     Executable,
 }
 
-pub fn exit_if_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) {
+fn exit_if_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) {
     static MAX: u32 = 500;
 
     if *counter >= MAX && quitting.load(atomic::Ordering::Relaxed) {

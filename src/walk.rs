@@ -73,6 +73,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     } else {
         PathBuf::new()
     };
+    let mountpoint = Arc::new(mountpoint);
 
     // A signal to tell the colorizer or the command processor to exit gracefully.
     let quitting = Arc::new(AtomicBool::new(false));
@@ -177,10 +178,10 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
     // Spawn the sender threads.
     walker.run(|| {
+        let tx = tx.clone();
         let config = Arc::clone(&config);
         let pattern = Arc::clone(&pattern);
-        let tx = tx.clone();
-        let mountpoint = mountpoint.to_owned();
+        let mountpoint = Arc::clone(&mountpoint);
 
         let mut counter = 0;
         let quitting = Arc::clone(&quitting2);

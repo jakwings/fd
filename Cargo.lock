@@ -78,7 +78,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ff-find"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "aho-corasick 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ansi_term 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",

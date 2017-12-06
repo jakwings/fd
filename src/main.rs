@@ -201,6 +201,8 @@ fn main() {
 }
 
 // XXX: not elegant
+// The regex crate can't help much: https://github.com/rust-lang/regex/issues/426
+// The man asked my use case again and again, but I found this guy case-insensitive.
 fn escape_pattern(pattern: &OsStr) -> Option<String> {
     let mut bytes = Vec::new();
 

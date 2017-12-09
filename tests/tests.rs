@@ -683,6 +683,7 @@ fn test_exec() {
             ".",
             "foo",
             "--absolute-path",
+            "--threads=1",
             "--exec",
             "printf",
             "%s\\n",
@@ -703,6 +704,7 @@ fn test_exec() {
             "--regex",
             ".",
             "foo",
+            "--threads=1",
             "--exec",
             "printf",
             "%s\\n",
@@ -721,7 +723,16 @@ fn test_exec() {
 
     env.assert_output(
         true,
-        &["--regex", ".", "foo", "--exec", "printf", "%s\\n", "{}"],
+        &[
+            "--regex",
+            ".",
+            "foo",
+            "--threads=1",
+            "--exec",
+            "printf",
+            "%s\\n",
+            "{}",
+        ],
         "./a.foo
          ./one/b.foo
          ./one/two/c.foo
@@ -731,7 +742,15 @@ fn test_exec() {
 
     env.assert_output(
         true,
-        &["--regex", ".", "α β", "--exec", "printf", "%s.%s\\n"],
+        &[
+            "--regex",
+            ".",
+            "α β",
+            "--threads=1",
+            "--exec",
+            "printf",
+            "%s.%s\\n",
+        ],
         "./α β.",
     );
 }

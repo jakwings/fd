@@ -31,7 +31,7 @@ use regex::bytes::RegexBuilder;
 use self::exec::ExecTemplate;
 use self::fshelper::{is_dir, to_absolute_path};
 use self::glob::GlobBuilder;
-use self::internal::{AppOptions, error, int_error, int_error_os};
+use self::internal::{AppOptions, error, warn, int_error, int_error_os};
 use self::lscolors::LsColors;
 use self::walk::FileType;
 

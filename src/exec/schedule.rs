@@ -9,7 +9,7 @@ use super::{ExecTemplate, warn};
 // Resource would get exhausted if we keep spawning new processes without waiting for the old ones.
 pub fn schedule(receiver: Arc<Mutex<Receiver<PathBuf>>>, template: Arc<ExecTemplate>) {
     loop {
-        let lock = receiver.lock().expect("Error: failed to acquire lock");
+        let lock = receiver.lock().expect("[Error] failed to acquire lock");
         let path: PathBuf = match lock.recv() {
             Ok(data) => data,
             Err(_) => break,

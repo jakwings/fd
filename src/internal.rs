@@ -64,12 +64,12 @@ pub struct AppOptions {
 }
 
 pub fn error(message: &str) -> ! {
-    writeln!(&mut ::std::io::stderr(), "Error: {}", message).expect("write to stderr");
+    writeln!(&mut ::std::io::stderr(), "[Error] {}", message).expect("write to stderr");
     process::exit(1)
 }
 
 pub fn warn(message: &str) {
-    writeln!(&mut ::std::io::stderr(), "Warning: {}", message).expect("write to stderr");
+    writeln!(&mut ::std::io::stderr(), "[Warning] {}", message).expect("write to stderr");
 }
 
 pub fn int_error(name: &str, num_str: &str, message: &str) -> ! {

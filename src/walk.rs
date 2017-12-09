@@ -82,7 +82,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let atom = Arc::clone(&quitting);
         ctrlc::set_handler(move || {
             atom.store(true, atomic::Ordering::Relaxed);
-        }).expect("Error: cannot set Ctrl-C handler");
+        }).expect("[Error] cannot set Ctrl-C handler");
     }
 
     // Spawn the thread that receives all results through the channel.
@@ -109,7 +109,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
             // Wait for all threads to exit before exiting the program.
             for h in handles {
-                h.join().expect("Error: unable to process search results");
+                h.join().expect("[Error] unable to process search results");
             }
         } else {
             let start = time::Instant::now();
@@ -284,7 +284,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     // Wait for the receiver thread to print out all results.
     receiver_thread
         .join()
-        .expect("Error: unable to collect search results");
+        .expect("[Error] unable to collect search results");
 }
 
 fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {

@@ -165,10 +165,10 @@ fn main() {
         let pattern = if config.unicode {
             OsStr::to_os_string(pattern.unwrap_or(OsStr::new("^")))
                 .into_string()
-                .unwrap_or_else(|_| error("Error: need a UTF-8 encoded pattern"))
+                .unwrap_or_else(|_| error("need a UTF-8 encoded pattern"))
         } else {
             escape_pattern(pattern.unwrap_or(OsStr::new("^")))
-                .expect("Error: invalid UTF-8 byte sequences found")
+                .expect("[Error] invalid UTF-8 byte sequences found")
         };
 
         // XXX: strange conformance to UTF-8
@@ -177,7 +177,7 @@ fn main() {
         RegexBuilder::new(&pattern)
     } else {
         let pattern = if let Some(p) = pattern {
-            OsStr::to_str(p).unwrap_or_else(|| error("Error: need a UTF-8 encoded pattern"))
+            OsStr::to_str(p).unwrap_or_else(|| error("need a UTF-8 encoded pattern"))
         } else {
             if config.match_full_path {
                 &"**"

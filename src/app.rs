@@ -271,10 +271,8 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "threads",
         "Set number of threads for searching and command execution.",
-        concat!(
-            "The number of threads to use for searching and command execution.\n",
-            "0 means [default: number of available CPU cores]"
-        )
+        "The number of threads to use for searching and command execution.\n\
+         0 means [default: number of available CPU cores]"
     );
 
     doc!(
@@ -292,7 +290,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "Run the given command for each search result, which can be represented by a pair of \
          braces {} in the command. If the command does not contain any {}, then a {} will be \
          appended as an argument to the program. A single semicolon ; will terminate the \
-         argument list."
+         argument list. With --threads=1 commands will run sequentially."
     );
 
     doc!(
@@ -314,10 +312,8 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "PATTERN",
-        concat!(
-            "The search pattern, a regex or glob pattern. [optional]\n",
-            "The default values for regex and glob are ^ and * respectively."
-        )
+        "The search pattern, a regex or glob pattern. [optional]\n\
+         The default values for regex and glob are ^ and * respectively."
     );
 
     help

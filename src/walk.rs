@@ -90,20 +90,15 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     let receiver_thread = thread::spawn(move || {
         // This will be set to `Some` if the `--exec` argument was supplied.
         if let Some(ref cmd) = rx_config.command {
-            let shared_rx = Arc::new(Mutex::new(rx));
-
             let cmd = Arc::new(cmd.clone());
-
-            // Each spawned job will store it's thread handle in here.
+            let shared_rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(threads);
+
             for _ in 0..threads {
                 let rx = Arc::clone(&shared_rx);
                 let cmd = Arc::clone(&cmd);
-
-                // Spawn a job thread that will listen for input and execute commands.
                 let handle = thread::spawn(move || exec::schedule(rx, cmd));
 
-                // Push the handle of the spawned thread into the vector for later joining.
                 handles.push(handle);
             }
 

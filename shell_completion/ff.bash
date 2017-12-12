@@ -23,7 +23,7 @@ _ff() {
 
     case "${cmd}" in
         ff)
-            opts=" -g -r -u -i -s -p -L -M -0 -A -S -a -I -v -h -V -t -d -c -j -x  --glob --regex --unicode --ignore-case --case-sensitive --full-path --follow --mount --print0 --absolute-path --sort-path --all --no-ignore --verbose --help --version --type --max-depth --color --threads --max-buffer-time --exec  <DIRECTORY> <PATTERN> "
+            opts=" -g -r -u -i -s -p -L -M -0 -A -S -a -I -m -v -h -V -t -d -c -j -x  --glob --regex --unicode --ignore-case --case-sensitive --full-path --follow --mount --print0 --absolute-path --sort-path --all --no-ignore --multiplex --verbose --help --version --type --max-depth --color --threads --max-buffer-time --exec  <DIRECTORY> <PATTERN> "
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
                 return 0

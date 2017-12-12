@@ -30,6 +30,7 @@ complete -c ff -n "__fish_using_command ff" -s A -l absolute-path -d 'Output abs
 complete -c ff -n "__fish_using_command ff" -s S -l sort-path -d 'Sort the results by pathname.'
 complete -c ff -n "__fish_using_command ff" -s a -l all -d 'Include dot-files in the search.'
 complete -c ff -n "__fish_using_command ff" -s I -l no-ignore -d 'Do not respect .(git)ignore files.'
+complete -c ff -n "__fish_using_command ff" -s m -l multiplex -d 'All executed commands receive the same input.'
 complete -c ff -n "__fish_using_command ff" -s v -l verbose -d 'Warn about I/O errors, file permissions, symlink loops, etc.'
 complete -c ff -n "__fish_using_command ff" -s h -l help -d 'Prints help information. Use --help for more details.'
 complete -c ff -n "__fish_using_command ff" -s V -l version -d 'Prints version information'

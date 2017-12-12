@@ -1,3 +1,4 @@
+use std::io::{self, Read};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -90,14 +91,28 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     let receiver_thread = thread::spawn(move || {
         // This will be set to `Some` if the `--exec` argument was supplied.
         if let Some(ref cmd) = rx_config.command {
+            // Always cache input for multiplexing mode.
+            let input = if rx_config.multiplex {
+                let mut bytes = Vec::new();
+
+                if let Err(err) = io::stdin().read_to_end(&mut bytes) {
+                    error(&err.to_string());
+                }
+                Some(bytes)
+            } else {
+                None
+            };
+
             let cmd = Arc::new(cmd.clone());
+            let input = Arc::new(input);
             let shared_rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(threads);
 
             for _ in 0..threads {
                 let rx = Arc::clone(&shared_rx);
                 let cmd = Arc::clone(&cmd);
-                let handle = thread::spawn(move || exec::schedule(rx, cmd));
+                let input = Arc::clone(&input);
+                let handle = thread::spawn(move || exec::schedule(rx, cmd, input));
 
                 handles.push(handle);
             }

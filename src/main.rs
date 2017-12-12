@@ -147,6 +147,7 @@ fn main() {
         sort_path: args.is_present("sort-path"),
         dot_files: args.is_present("dot-files"),
         read_ignore: !args.is_present("no-ignore"),
+        multiplex: args.is_present("multiplex"),
         follow_symlink: args.is_present("follow-symlink"),
         same_filesystem: args.is_present("same-filesystem"),
         null_terminator: args.is_present("null_terminator"),

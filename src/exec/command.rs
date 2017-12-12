@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::io;
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
-use std::process::{Command, Child};
+use std::process::{Command, Child, Stdio};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExecCommand {
@@ -18,8 +18,15 @@ impl ExecCommand {
         &self.argv[1..]
     }
 
-    pub fn execute(&self) -> io::Result<Child> {
-        Command::new(self.prog()).args(self.args()).spawn()
+    pub fn execute(&self, capture: bool) -> io::Result<Child> {
+        Command::new(self.prog())
+            .args(self.args())
+            .stdin(if capture {
+                Stdio::piped()
+            } else {
+                Stdio::inherit()
+            })
+            .spawn()
     }
 }
 

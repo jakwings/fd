@@ -83,6 +83,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg("sort-path").long("sort-path").short("S"))
         .arg(arg("dot-files").long("all").short("a"))
         .arg(arg("no-ignore").long("no-ignore").short("I"))
+        .arg(arg("multiplex").long("multiplex").short("m"))
         .arg(
             arg("file-type")
                 .long("type")
@@ -233,6 +234,14 @@ fn get_help() -> HashMap<&'static str, Help> {
         "Do not respect .(git)ignore files.",
         "Show search results from files and directories that would otherwise be ignored by \
          .(git)ignore files."
+    );
+
+    doc!(
+        help,
+        "multiplex",
+        "All executed commands receive the same input.",
+        "Multiplex stdin of this program so that every executed command shares the same input. \
+         Interactive input is disabled by caching, even if the commands run sequentially."
     );
 
     doc!(

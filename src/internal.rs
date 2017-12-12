@@ -35,6 +35,9 @@ pub struct AppOptions {
     // Whether to respect VCS ignore files (.gitignore, .ignore, etc.).
     pub read_ignore: bool,
 
+    // Whether to multiplex stdin.
+    pub multiplex: bool,
+
     // Whether to follow symbolic links.
     pub follow_symlink: bool,
 

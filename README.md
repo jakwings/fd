@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/jakwings/ff-find.svg?branch=master)](https://travis-ci.org/jakwings/ff-find)
 [![Version info](https://img.shields.io/crates/v/ff-find.svg)](https://crates.io/crates/ff-find)
 
-ff: Just my own fork of [fd] with many incompatible changes. (unstable)
+ff: Just my own fork of [fd] with many incompatible changes. (**unstable**)
 
 [fd]: https://github.com/sharkdp/fd/tree/7ecb6239504dff9eb9e9359521ece6744ef04f67
 
@@ -102,6 +102,11 @@ OPTIONS:
             Show search results from files and directories that would otherwise
             be ignored by .(git)ignore files.
 
+    -m, --multiplex
+            Multiplex stdin of this program so that every executed command
+            shares the same input. Interactive input is disabled by caching,
+            even if the commands run sequentially.
+
     -t, --type <filetype>
             Filter the search by type: [default: no filter]
                 directory or d: directories
@@ -131,7 +136,7 @@ OPTIONS:
             represented by a pair of braces {} in the command. If the command
             does not contain any {}, then a {} will be appended as an argument
             to the program. A single semicolon ; will terminate the argument
-            list.
+            list. With --threads=1 commands will run sequentially.
 
     -v, --verbose
             Show warnings about file permissions, loops caused by symlinks, I/O

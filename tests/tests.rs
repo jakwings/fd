@@ -2,6 +2,7 @@
 
 extern crate regex;
 
+// TODO: Reorganize the test suit.
 mod testenv;
 
 use regex::escape;
@@ -753,4 +754,6 @@ fn test_exec() {
         ],
         "./α β.",
     );
+
+    // TODO: Test multiplexer for single-thread and multi-thread execution.
 }

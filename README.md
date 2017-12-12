@@ -21,7 +21,7 @@ cargo install --features simd-accel ff-find
 
 ## Usage
 
-ff let you search for files and directories with a glob pattern.
+ff lets you search for files and directories with a glob pattern.
 
 ```bash
 ff $HOME '*.txt'
@@ -36,7 +36,7 @@ ff --regex $HOME '\.txt$'
 Unicode support:
 
 ```bash
-ff . '?'            # doen't match filename π
+ff . '?'            # doesn't match filename π
 ff --unicode . '?'  # matches filename π
 
 ff --regex . '^.$'            # doesn't match filename π

@@ -755,5 +755,6 @@ fn test_exec() {
         "./α β.",
     );
 
+    // TODO: Test isatty(stdin)
     // TODO: Test multiplexer for single-thread and multi-thread execution.
 }

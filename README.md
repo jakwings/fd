@@ -136,7 +136,10 @@ OPTIONS:
             represented by a pair of braces {} in the command. If the command
             does not contain any {}, then a {} will be appended as an argument
             to the program. A single semicolon ; will terminate the argument
-            list. With --threads=1 commands will run sequentially.
+            list.
+            With --threads=1 commands will run sequentially. When both multi
+            -threading and multiplexing are enabled commands will not
+            receive input from the terminal.
 
     -v, --verbose
             Show warnings about file permissions, loops caused by symlinks, I/O

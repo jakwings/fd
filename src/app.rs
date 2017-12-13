@@ -300,8 +300,8 @@ fn get_help() -> HashMap<&'static str, Help> {
          braces {} in the command. If the command does not contain any {}, then a {} will be \
          appended as an argument to the program. A single semicolon ; will terminate the \
          argument list.\n\
-         With --threads=1 commands will run sequentially. When both multi-threading and \
-         multiplexing are enabled commands will not receive input from the terminal."
+         With --threads=1 commands will run sequentially. When multi-threading is enabled and \
+         multiplexing is not enabled, commands will not receive input from the terminal."
     );
 
     doc!(

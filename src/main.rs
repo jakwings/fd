@@ -114,7 +114,8 @@ fn main() {
                 int_error_os("threads", &num_str, "is not an integer");
             })
         })
-        .unwrap_or(num_cpu);
+        .unwrap_or(num_cpu)
+        .max(1);
 
     let colorful = match args.value_of("color") {
         Some("always") => true,

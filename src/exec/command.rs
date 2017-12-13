@@ -18,14 +18,10 @@ impl ExecCommand {
         &self.argv[1..]
     }
 
-    pub fn execute(&self, capture: bool) -> io::Result<Child> {
+    pub fn execute(&self, stdin: Stdio) -> io::Result<Child> {
         Command::new(self.prog())
             .args(self.args())
-            .stdin(if capture {
-                Stdio::piped()
-            } else {
-                Stdio::inherit()
-            })
+            .stdin(stdin)
             .spawn()
     }
 }

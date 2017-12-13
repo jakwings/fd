@@ -299,7 +299,9 @@ fn get_help() -> HashMap<&'static str, Help> {
         "Run the given command for each search result, which can be represented by a pair of \
          braces {} in the command. If the command does not contain any {}, then a {} will be \
          appended as an argument to the program. A single semicolon ; will terminate the \
-         argument list. With --threads=1 commands will run sequentially."
+         argument list.\n\
+         With --threads=1 commands will run sequentially. When both multi-threading and \
+         multiplexing are enabled commands will not receive input from the terminal."
     );
 
     doc!(

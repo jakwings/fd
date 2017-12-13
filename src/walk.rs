@@ -8,6 +8,7 @@ use std::sync::mpsc::channel;
 use std::thread;
 use std::time;
 
+use super::atty;
 use super::ctrlc;
 use super::find_mountpoint::find_mountpoint;
 use super::ignore::{WalkState, WalkBuilder};
@@ -104,7 +105,11 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             };
 
             let cmd = Arc::new(cmd.clone());
+            // Enable caching for broadcast, as interactive input may not satisfy all commands.
             let input = Arc::new(cached_input);
+            // It is unsafe to interact with mixed output from different commands.
+            let no_tty = threads > 1 && atty::is(atty::Stream::Stdin);
+
             let shared_rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(threads);
 
@@ -112,7 +117,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 let rx = Arc::clone(&shared_rx);
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
-                let handle = thread::spawn(move || exec::schedule(rx, cmd, input));
+                let handle = thread::spawn(move || exec::schedule(rx, cmd, input, no_tty));
 
                 handles.push(handle);
             }

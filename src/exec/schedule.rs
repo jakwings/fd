@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::path::PathBuf;
+use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Receiver;
 
@@ -12,6 +13,7 @@ pub fn schedule(
     receiver: Arc<Mutex<Receiver<PathBuf>>>,
     template: Arc<ExecTemplate>,
     cached_input: Arc<Option<Vec<u8>>>,
+    no_tty: bool,
 ) {
     loop {
         let lock = receiver.lock().expect("[Error] failed to acquire lock");
@@ -24,9 +26,15 @@ pub fn schedule(
         drop(lock);
 
         let cmd = template.apply(&path);
-        let capture = cached_input.is_some();
+        let stdin = if cached_input.is_some() {
+            Stdio::piped()
+        } else if no_tty {
+            Stdio::null()
+        } else {
+            Stdio::inherit()
+        };
 
-        if let Err(err) = cmd.execute(capture).and_then(|mut child| {
+        if let Err(err) = cmd.execute(stdin).and_then(|mut child| {
             if let Some(ref bytes) = *cached_input {
                 if let Some(mut stdin) = child.stdin.take() {
                     stdin.write_all(bytes)?;

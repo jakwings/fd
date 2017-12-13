@@ -78,7 +78,6 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
     // A signal to tell the colorizer or the command processor to exit gracefully.
     let quitting = Arc::new(AtomicBool::new(false));
-    let quitting2 = Arc::clone(&quitting);
     {
         let atom = Arc::clone(&quitting);
         ctrlc::set_handler(move || {
@@ -88,11 +87,12 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
     // Spawn the thread that receives all results through the channel.
     let rx_config = Arc::clone(&config);
+    let rx_quitting = Arc::clone(&quitting);
     let receiver_thread = thread::spawn(move || {
         // This will be set to `Some` if the `--exec` argument was supplied.
         if let Some(ref cmd) = rx_config.command {
-            // Always cache input for multiplexing mode.
-            let input = if rx_config.multiplex {
+            // Broadcast the stdin input to all child processes.
+            let cached_input = if rx_config.multiplex {
                 let mut bytes = Vec::new();
 
                 if let Err(err) = io::stdin().read_to_end(&mut bytes) {
@@ -104,7 +104,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             };
 
             let cmd = Arc::new(cmd.clone());
-            let input = Arc::new(input);
+            let input = Arc::new(cached_input);
             let shared_rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(threads);
 
@@ -167,7 +167,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
 
                 let mut counter = 0;
                 for value in buffer {
-                    exit_if_sigint(&quitting, &mut counter);
+                    exit_if_sigint(&rx_quitting, &mut counter);
                     output::print_entry(&value, &rx_config);
                 }
             }
@@ -194,7 +194,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let mountpoint = Arc::clone(&mountpoint);
 
         let mut counter = 0;
-        let quitting = Arc::clone(&quitting2);
+        let quitting = Arc::clone(&quitting);
         Box::new(move |entry_o| {
             exit_if_sigint(&quitting, &mut counter);
 

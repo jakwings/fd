@@ -25,7 +25,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time;
 
-use atty::Stream;
 use regex::bytes::RegexBuilder;
 
 use self::exec::ExecTemplate;
@@ -120,7 +119,7 @@ fn main() {
     let colorful = match args.value_of("color") {
         Some("always") => true,
         Some("never") => false,
-        _ => atty::is(Stream::Stdout),
+        _ => atty::is(atty::Stream::Stdout),
     };
     let ls_colors = if colorful {
         // TODO: env::var_os

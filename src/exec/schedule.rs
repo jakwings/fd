@@ -11,10 +11,11 @@ use super::{ExecTemplate, warn};
 pub fn schedule(
     receiver: Arc<Mutex<Receiver<PathBuf>>>,
     template: Arc<ExecTemplate>,
-    input: Arc<Option<Vec<u8>>>,
+    cached_input: Arc<Option<Vec<u8>>>,
 ) {
     loop {
         let lock = receiver.lock().expect("[Error] failed to acquire lock");
+
         let path: PathBuf = match lock.recv() {
             Ok(data) => data,
             Err(_) => break,
@@ -23,10 +24,10 @@ pub fn schedule(
         drop(lock);
 
         let cmd = template.apply(&path);
-        let capture = input.is_some();
+        let capture = cached_input.is_some();
 
         if let Err(err) = cmd.execute(capture).and_then(|mut child| {
-            if let Some(ref bytes) = *input {
+            if let Some(ref bytes) = *cached_input {
                 if let Some(mut stdin) = child.stdin.take() {
                     stdin.write_all(bytes)?;
                 } else {

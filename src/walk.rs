@@ -1,4 +1,4 @@
-use std::io::{self, Read};
+use std::io;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -41,16 +41,29 @@ pub enum FileType {
     Executable,
 }
 
-fn exit_if_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) {
-    static MAX: u32 = 500;
+const MAX_CNT: u32 = 500;
 
-    if *counter >= MAX && quitting.load(atomic::Ordering::Relaxed) {
+fn load_bool(atom: &Arc<AtomicBool>) -> bool {
+    atom.load(atomic::Ordering::Relaxed)
+}
+
+fn has_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) -> bool {
+    if *counter >= MAX_CNT && load_bool(quitting) {
+        true
+    } else {
+        *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
+        false
+    }
+}
+
+fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
+    let mut counter = MAX_CNT;
+
+    if has_sigint(quitting, &mut counter) {
         // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
         // XXX: https://github.com/rust-lang/rust/issues/33417
         let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
         exit(0x80 + signum);
-    } else {
-        *counter = if *counter < MAX { *counter + 1 } else { 1 };
     }
 }
 
@@ -89,17 +102,40 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     // Spawn the thread that receives all results through the channel.
     let rx_config = Arc::clone(&config);
     let rx_quitting = Arc::clone(&quitting);
+    let mut rx_counter = 0;
     let receiver_thread = thread::spawn(move || {
         // This will be set to `Some` if the `--exec` argument was supplied.
         if let Some(ref cmd) = rx_config.command {
             // Broadcast the stdin input to all child processes.
             let cached_input = if rx_config.multiplex {
                 let mut bytes = Vec::new();
+                let stdin = io::stdin();
 
-                if let Err(err) = io::stdin().read_to_end(&mut bytes) {
-                    error(&err.to_string());
+                // Do not allow blocking I/O to delay the shutdown of this program.
+                // e.g. when waiting for user input.
+                let mut lock = stdin.lock();
+                let was_nonblocking = exec::set_nonblocking(&stdin).unwrap_or_else(|msg| {
+                    error(msg);
+                });
+                let aborted = match exec::try_read_to_end(&rx_quitting, &mut lock, &mut bytes) {
+                    Ok(None) => true,
+                    Ok(Some(_size)) => false,
+                    Err(err) => error(&err.to_string()),
+                };
+
+                // Restore the blocking mode.
+                if !was_nonblocking {
+                    if let Err(msg) = exec::set_blocking(&stdin) {
+                        error(msg);
+                    }
                 }
-                Some(bytes)
+                drop(lock);
+
+                if aborted {
+                    return;
+                } else {
+                    Some(bytes)
+                }
             } else {
                 None
             };
@@ -117,7 +153,8 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 let rx = Arc::clone(&shared_rx);
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
-                let handle = thread::spawn(move || exec::schedule(rx, cmd, input, no_tty));
+                let abort = Arc::clone(&rx_quitting);
+                let handle = thread::spawn(move || exec::schedule(abort, rx, cmd, input, no_tty));
 
                 handles.push(handle);
             }
@@ -140,6 +177,9 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             };
 
             for value in rx {
+                if has_sigint(&rx_quitting, &mut rx_counter) {
+                    return;
+                }
                 match mode {
                     ReceiverMode::Buffering(buf_time) => match buf_time {
                         BufferTime::Duration => {
@@ -170,15 +210,18 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 // Would parallel sort really help much? Skeptical.
                 buffer.sort();
 
-                let mut counter = 0;
                 for value in buffer {
-                    exit_if_sigint(&rx_quitting, &mut counter);
+                    if has_sigint(&rx_quitting, &mut rx_counter) {
+                        return;
+                    }
                     output::print_entry(&value, &rx_config);
                 }
             }
         }
     });
 
+    let tx_quitting = Arc::clone(&quitting);
+    let mut tx_counter = 0;
     let walker = WalkBuilder::new(root)
         .hidden(!config.dot_files)
         .ignore(config.read_ignore)
@@ -198,10 +241,11 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
         let pattern = Arc::clone(&pattern);
         let mountpoint = Arc::clone(&mountpoint);
 
-        let mut counter = 0;
-        let quitting = Arc::clone(&quitting);
+        let quitting = Arc::clone(&tx_quitting);
         Box::new(move |entry_o| {
-            exit_if_sigint(&quitting, &mut counter);
+            if has_sigint(&quitting, &mut tx_counter) {
+                return WalkState::Quit;
+            }
 
             // https://docs.rs/walkdir/2.0.1/walkdir/struct.DirEntry.html
             let entry = match entry_o {
@@ -263,8 +307,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             if config.match_full_path {
                 if let Ok(path_buf) = to_absolute_path(&entry_path) {
                     if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                        tx.send(entry_path.to_owned())
-                            .unwrap_or_else(|err| error(&err.to_string()));
+                        let _ = tx.send(entry_path.to_owned());
                     }
                 } else {
                     error(&format!(
@@ -275,8 +318,7 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
             } else {
                 if let Some(os_str) = entry_path.file_name() {
                     if pattern.is_match(os_str.as_bytes()) {
-                        tx.send(entry_path.to_owned())
-                            .unwrap_or_else(|err| error(&err.to_string()));
+                        let _ = tx.send(entry_path.to_owned());
                     }
                 }
             }
@@ -300,6 +342,8 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
     receiver_thread
         .join()
         .expect("[Error] unable to collect search results");
+
+    exit_if_sigint(&quitting);
 }
 
 fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {

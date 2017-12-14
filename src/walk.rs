@@ -71,7 +71,7 @@ fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
 // If the `--exec` argument was supplied, this will create a thread pool for executing
 // jobs in parallel from a given command line and the discovered paths. Otherwise, each
 // path will simply be written to standard output.
-pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
+pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
     let (tx, rx) = channel();
     let threads = config.threads;
 
@@ -303,23 +303,27 @@ pub fn scan(root: &Path, pattern: Arc<Regex>, config: Arc<AppOptions>) {
                 }
             }
 
-            if config.match_full_path {
-                if let Ok(path_buf) = to_absolute_path(&entry_path) {
-                    if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                        let _ = tx.send(entry_path.to_owned());
+            if let Some(ref pattern) = *pattern {
+                if config.match_full_path {
+                    if let Ok(path_buf) = to_absolute_path(&entry_path) {
+                        if pattern.is_match(path_buf.as_os_str().as_bytes()) {
+                            let _ = tx.send(entry_path.to_owned());
+                        }
+                    } else {
+                        error(&format!(
+                            "cannot get full path of {:?}",
+                            entry_path.as_os_str()
+                        ));
                     }
                 } else {
-                    error(&format!(
-                        "cannot get full path of {:?}",
-                        entry_path.as_os_str()
-                    ));
-                }
-            } else {
-                if let Some(os_str) = entry_path.file_name() {
-                    if pattern.is_match(os_str.as_bytes()) {
-                        let _ = tx.send(entry_path.to_owned());
+                    if let Some(os_str) = entry_path.file_name() {
+                        if pattern.is_match(os_str.as_bytes()) {
+                            let _ = tx.send(entry_path.to_owned());
+                        }
                     }
                 }
+            } else {
+                let _ = tx.send(entry_path.to_owned());
             }
 
             if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {

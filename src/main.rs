@@ -160,46 +160,37 @@ fn main() {
         file_type: file_type,
     };
 
-    let pattern = args.value_of_os("PATTERN");
-
-    let mut builder = if config.use_regex {
-        let pattern = if config.unicode {
-            OsStr::to_os_string(pattern.unwrap_or(OsStr::new("^")))
-                .into_string()
-                .unwrap_or_else(|_| error("need a UTF-8 encoded pattern"))
-        } else {
-            escape_pattern(pattern.unwrap_or(OsStr::new("^")))
-                .expect("[Error] invalid UTF-8 byte sequences found")
-        };
-
-        // XXX: strange conformance to UTF-8
-        //      (?u)π or (?u:π) doesn't match π without --unicode?
-        //      (?-u:π) is not allowed with --unicode?
-        RegexBuilder::new(&pattern)
-    } else {
-        let pattern = if let Some(p) = pattern {
-            OsStr::to_str(p).unwrap_or_else(|| error("need a UTF-8 encoded pattern"))
-        } else {
-            if config.match_full_path {
-                &"**"
+    let pattern = args.value_of_os("PATTERN").map(|pattern| {
+        let mut builder = if config.use_regex {
+            let pattern = if config.unicode {
+                OsStr::to_os_string(pattern)
+                    .into_string()
+                    .unwrap_or_else(|_| error("need a UTF-8 encoded pattern"))
             } else {
-                &"*"
-            }
+                escape_pattern(pattern).expect("[Error] invalid UTF-8 byte sequences found")
+            };
+
+            // XXX: strange conformance to UTF-8
+            //      (?u)π or (?u:π) doesn't match π without --unicode?
+            //      (?-u:π) is not allowed with --unicode?
+            RegexBuilder::new(&pattern)
+        } else {
+            let pattern =
+                OsStr::to_str(pattern).unwrap_or_else(|| error("need a UTF-8 encoded pattern"));
+
+            // XXX: strange conformance to UTF-8
+            GlobBuilder::new(pattern, &config)
         };
 
-        // XXX: strange conformance to UTF-8
-        GlobBuilder::new(pattern, &config)
-    };
+        builder
+            .unicode(config.unicode)
+            .case_insensitive(config.case_insensitive)
+            .dot_matches_new_line(true)
+            .build()
+            .unwrap_or_else(|err| error(&err.to_string()))
+    });
 
-    match builder
-        .unicode(config.unicode)
-        .case_insensitive(config.case_insensitive)
-        .dot_matches_new_line(true)
-        .build()
-    {
-        Ok(re) => walk::scan(&root_dir, Arc::new(re), Arc::new(config)),
-        Err(err) => error(&err.to_string()),
-    }
+    walk::scan(&root_dir, Arc::new(pattern), Arc::new(config));
 }
 
 // XXX: not elegant

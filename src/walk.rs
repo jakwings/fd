@@ -57,12 +57,11 @@ fn has_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) -> bool {
 }
 
 fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
-    let mut counter = MAX_CNT;
-
-    if has_sigint(quitting, &mut counter) {
+    if load_bool(quitting) {
         // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
         // XXX: https://github.com/rust-lang/rust/issues/33417
         let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
+
         exit(0x80 + signum);
     }
 }

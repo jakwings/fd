@@ -43,6 +43,10 @@ pub enum FileType {
 
 const MAX_CNT: u32 = 500;
 
+fn loop_counter(counter: &mut u32) {
+    *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
+}
+
 fn load_bool(atom: &Arc<AtomicBool>) -> bool {
     atom.load(atomic::Ordering::Relaxed)
 }
@@ -51,7 +55,7 @@ fn has_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) -> bool {
     if *counter >= MAX_CNT && load_bool(quitting) {
         true
     } else {
-        *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
+        loop_counter(counter);
         false
     }
 }
@@ -163,17 +167,20 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 h.join().expect("[Error] unable to process search results");
             }
         } else {
-            let start = time::Instant::now();
-            let max_buffer_time = rx_config
-                .max_buffer_time
-                .unwrap_or_else(|| time::Duration::from_millis(100));
+            let max_buffer_time = rx_config.max_buffer_time.unwrap_or(100);
 
             let mut buffer = Vec::new();
             let mut mode = if rx_config.sort_path {
                 ReceiverMode::Buffering(BufferTime::Eternity)
-            } else {
+            } else if max_buffer_time > 0 {
                 ReceiverMode::Buffering(BufferTime::Duration)
+            } else {
+                ReceiverMode::Streaming
             };
+
+            let mut count = 0;
+            let start = time::Instant::now();
+            let duration = time::Duration::from_millis(max_buffer_time);
 
             for value in rx {
                 if has_sigint(&rx_quitting, &mut rx_counter) {
@@ -184,13 +191,15 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         BufferTime::Duration => {
                             buffer.push(value);
 
-                            if time::Instant::now() - start > max_buffer_time {
+                            if count >= MAX_CNT && time::Instant::now() - start > duration {
                                 for v in &buffer {
                                     output::print_entry(&v, &rx_config);
                                 }
                                 buffer.clear();
 
                                 mode = ReceiverMode::Streaming;
+                            } else {
+                                loop_counter(&mut count);
                             }
                         }
                         BufferTime::Eternity => {

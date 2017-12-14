@@ -23,7 +23,6 @@ use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time;
 
 use regex::bytes::RegexBuilder;
 
@@ -90,12 +89,12 @@ fn main() {
 
     let max_buffer_time = args.value_of("max-buffer-time")
         .map(|num_str| match u64::from_str_radix(num_str, 10) {
-            Ok(num) => time::Duration::from_millis(num),
+            Ok(num) => num,
             Err(err) => int_error("max-buffer-time", num_str, &err.to_string()),
         })
         .or_else(|| {
             args.value_of_os("max-buffer-time").map(|num_str| {
-                int_error_os("max-buffer-time", &num_str, "is not an integer");
+                int_error_os("max-buffer-time", &num_str, "is not a non-negative integer");
             })
         });
 

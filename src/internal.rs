@@ -1,7 +1,6 @@
 use std::ffi::OsStr;
 use std::io::Write;
 use std::process;
-use std::time;
 
 use super::exec::ExecTemplate;
 use super::lscolors::LsColors;
@@ -57,7 +56,7 @@ pub struct AppOptions {
     pub threads: usize,
 
     // The amount of time for buffering and sorting before streaming the search results.
-    pub max_buffer_time: Option<time::Duration>,
+    pub max_buffer_time: Option<u64>, // milliseconds
 
     // The command to execute with the search results.
     pub command: Option<ExecTemplate>,

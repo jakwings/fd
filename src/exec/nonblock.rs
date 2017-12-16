@@ -9,6 +9,11 @@ use super::nix::{Errno, libc};
 
 const BUF_SIZE: usize = 512;
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds
+const MAX_CNT: u32 = 500;
+
+fn loop_counter(counter: &mut u32) {
+    *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
+}
 
 fn get_flag<T: AsRawFd>(obj: &T) -> libc::c_int {
     unsafe {
@@ -59,11 +64,14 @@ pub fn try_read_to_end<R: Read>(
 ) -> io::Result<Option<usize>> {
     let mut total = 0;
     let mut buffer = [0; BUF_SIZE];
+    let mut counter = 0;
     let interval = time::Duration::new(0, INTERVAL);
 
     loop {
-        if load_bool(&atom) {
+        if counter >= MAX_CNT && load_bool(&atom) {
             return Ok(None);
+        } else {
+            loop_counter(&mut counter);
         }
         match reader.read(&mut buffer) {
             Ok(0) => break,
@@ -72,9 +80,9 @@ pub fn try_read_to_end<R: Read>(
                 if err.kind() != io::ErrorKind::WouldBlock {
                     return Err(err);
                 }
+                thread::sleep(interval);
             }
         }
-        thread::sleep(interval);
     }
 
     Ok(Some(total))
@@ -87,11 +95,14 @@ pub fn try_write_all<W: Write>(
 ) -> io::Result<Option<()>> {
     let mut total = 0;
     let length = content.len();
+    let mut counter = 0;
     let interval = time::Duration::new(0, INTERVAL);
 
     loop {
-        if load_bool(&atom) {
+        if counter >= MAX_CNT && load_bool(&atom) {
             return Ok(None);
+        } else {
+            loop_counter(&mut counter);
         }
 
         let range = total..(BUF_SIZE + total).min(length);
@@ -103,9 +114,9 @@ pub fn try_write_all<W: Write>(
                 if err.kind() != io::ErrorKind::WouldBlock {
                     return Err(err);
                 }
+                thread::sleep(interval);
             }
         }
-        thread::sleep(interval);
     }
 
     Ok(Some(()))

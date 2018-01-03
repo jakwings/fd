@@ -167,7 +167,11 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 h.join().expect("[Error] unable to process search results");
             }
         } else {
-            let max_buffer_time = rx_config.max_buffer_time.unwrap_or(100);
+            let max_buffer_time = if atty::is(atty::Stream::Stdout) {
+                rx_config.max_buffer_time.unwrap_or(100)
+            } else {
+                0
+            };
 
             let mut buffer = Vec::new();
             let mut mode = if rx_config.sort_path {

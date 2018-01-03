@@ -109,7 +109,7 @@ fn main() {
             Err(err) => int_error("threads", num_str, &err.to_string()),
         })
         .or_else(|| {
-            args.value_of_os("max-buffer-time").map(|num_str| {
+            args.value_of_os("threads").map(|num_str| {
                 int_error_os("threads", &num_str, "is not an integer");
             })
         })

@@ -287,9 +287,10 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "max-buffer-time",
-        "Set time (in milliseconds) for buffering and sorting.",
+        "Set time for buffering and sorting before printing the results.",
         "The amount of time (in milliseconds) for the search results to be buffered and sorted \
-         before streaming."
+         before printed to the terminal. This has nothing to do with --exec, since the output \
+         can be messed up by printing in parallel."
     );
 
     doc!(

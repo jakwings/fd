@@ -129,7 +129,9 @@ OPTIONS:
 
         --max-buffer-time <milliseconds>
             The amount of time (in milliseconds) for the search results to be
-            buffered and sorted before streaming.
+            buffered and sorted before printed to the terminal. This has nothing
+            to do with --exec, since the output can be messed up by printing in
+            parallel.
 
     -x, --exec <program [argument]... [;]>
             Run the given command for each search result, which can be

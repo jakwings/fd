@@ -15,7 +15,7 @@ pub fn schedule(
     receiver: Arc<Mutex<Receiver<PathBuf>>>,
     template: Arc<ExecTemplate>,
     cached_input: Arc<Option<Vec<u8>>>,
-    no_tty: bool,
+    no_stdin: bool,
 ) {
     loop {
         if quitting.load(atomic::Ordering::Relaxed) {
@@ -34,7 +34,7 @@ pub fn schedule(
         let cmd = template.apply(&path);
         let stdin = if cached_input.is_some() {
             Stdio::piped()
-        } else if no_tty {
+        } else if no_stdin {
             Stdio::null()
         } else {
             Stdio::inherit()

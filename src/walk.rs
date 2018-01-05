@@ -147,7 +147,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
             // Enable caching for broadcast, as interactive input may not satisfy all commands.
             let input = Arc::new(cached_input);
             // It is unsafe to interact with mixed output from different commands.
-            let no_tty = threads > 1 && atty::is(atty::Stream::Stdin);
+            let no_stdin = threads > 1 && atty::is(atty::Stream::Stdin);
 
             let shared_rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(threads);
@@ -157,7 +157,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
                 let abort = Arc::clone(&rx_quitting);
-                let handle = thread::spawn(move || exec::schedule(abort, rx, cmd, input, no_tty));
+                let handle = thread::spawn(move || exec::schedule(abort, rx, cmd, input, no_stdin));
 
                 handles.push(handle);
             }

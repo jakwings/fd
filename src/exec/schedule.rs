@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
@@ -16,6 +16,7 @@ pub fn schedule(
     template: Arc<ExecTemplate>,
     cached_input: Arc<Option<Vec<u8>>>,
     no_stdin: bool,
+    cache_output: bool,
 ) {
     loop {
         if quitting.load(atomic::Ordering::Relaxed) {
@@ -32,6 +33,7 @@ pub fn schedule(
         drop(lock);
 
         let cmd = template.apply(&path);
+
         let stdin = if cached_input.is_some() {
             Stdio::piped()
         } else if no_stdin {
@@ -40,7 +42,13 @@ pub fn schedule(
             Stdio::inherit()
         };
 
-        if let Err(err) = cmd.execute(stdin).and_then(|mut child| {
+        let (stdout, stderr) = if cache_output {
+            (Stdio::piped(), Stdio::piped())
+        } else {
+            (Stdio::inherit(), Stdio::inherit())
+        };
+
+        if let Err(err) = cmd.execute(stdin, stdout, stderr).and_then(|mut child| {
             if let Some(ref bytes) = *cached_input {
                 if let Some(mut stdin) = child.stdin.take() {
                     // Not necessary, but unblocking I/O helps to exit earlier.
@@ -63,7 +71,16 @@ pub fn schedule(
                 }
             }
 
-            child.wait()
+            if cache_output {
+                child.wait_with_output().and_then(|output| {
+                    // Even select() cannot help to avoid reordering.
+                    io::stdout().write_all(&output.stdout)?;
+                    io::stderr().write_all(&output.stderr)?;
+                    Ok(output.status)
+                })
+            } else {
+                child.wait()
+            }
         }) {
             warn(&format!("{:?}: {}", cmd.prog(), err.to_string()));
         }

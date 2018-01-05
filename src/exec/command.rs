@@ -18,10 +18,12 @@ impl ExecCommand {
         &self.argv[1..]
     }
 
-    pub fn execute(&self, stdin: Stdio) -> io::Result<Child> {
+    pub fn execute(&self, stdin: Stdio, stdout: Stdio, stderr: Stdio) -> io::Result<Child> {
         Command::new(self.prog())
             .args(self.args())
             .stdin(stdin)
+            .stdout(stdout)
+            .stderr(stderr)
             .spawn()
     }
 }

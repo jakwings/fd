@@ -148,6 +148,8 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
             let input = Arc::new(cached_input);
             // It is unsafe to interact with mixed output from different commands.
             let no_stdin = threads > 1 && atty::is(atty::Stream::Stdin);
+            // Reorder the output only when necessary.
+            let cache_output = threads > 1;
 
             let shared_rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(threads);
@@ -157,7 +159,9 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
                 let abort = Arc::clone(&rx_quitting);
-                let handle = thread::spawn(move || exec::schedule(abort, rx, cmd, input, no_stdin));
+                let handle = thread::spawn(move || {
+                    exec::schedule(abort, rx, cmd, input, no_stdin, cache_output)
+                });
 
                 handles.push(handle);
             }

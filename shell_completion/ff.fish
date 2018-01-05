@@ -15,7 +15,7 @@ complete -c ff -n "__fish_using_command ff" -s t -l type -d 'Filter by type: d,d
 complete -c ff -n "__fish_using_command ff" -s d -l max-depth -d 'Set maximum search depth. [default: none]'
 complete -c ff -n "__fish_using_command ff" -s c -l color -d 'When to use colors: auto, never, always [default: auto]' -r -f -a "auto never always"
 complete -c ff -n "__fish_using_command ff" -s j -l threads -d 'Set number of threads for searching and command execution.'
-complete -c ff -n "__fish_using_command ff" -l max-buffer-time -d 'Set time for buffering and sorting before printing the results.'
+complete -c ff -n "__fish_using_command ff" -l max-buffer-time -d 'Set time (in milliseconds) for buffering and sorting.'
 complete -c ff -n "__fish_using_command ff" -s x -l exec -d 'Execute the given command for each search result.'
 complete -c ff -n "__fish_using_command ff" -s g -l glob -d 'Search with a glob pattern. [default]'
 complete -c ff -n "__fish_using_command ff" -s r -l regex -d 'Search with a regex pattern. [default: glob]'

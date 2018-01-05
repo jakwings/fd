@@ -14,7 +14,7 @@ _ff() {
 '--color+[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
 '-j+[Set number of threads for searching and command execution.]' \
 '--threads+[Set number of threads for searching and command execution.]' \
-'--max-buffer-time+[Set time for buffering and sorting before printing the results.]' \
+'--max-buffer-time+[Set time (in milliseconds) for buffering and sorting.]' \
 '-x+[Execute the given command for each search result.]' \
 '--exec+[Execute the given command for each search result.]' \
 '-g[Search with a glob pattern. \[default\]]' \

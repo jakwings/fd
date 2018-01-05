@@ -287,10 +287,9 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "max-buffer-time",
-        "Set time for buffering and sorting before printing the results.",
+        "Set time (in milliseconds) for buffering and sorting.",
         "The amount of time (in milliseconds) for the search results to be buffered and sorted \
-         before printed to the terminal. This has nothing to do with --exec, since the output \
-         can be messed up by printing in parallel."
+         before streaming."
     );
 
     doc!(
@@ -302,7 +301,9 @@ fn get_help() -> HashMap<&'static str, Help> {
          appended as an argument to the program. A single semicolon ; will terminate the \
          argument list.\n\
          With --threads=1 commands will run sequentially. When multi-threading is enabled and \
-         multiplexing is not enabled, commands will not receive input from the terminal."
+         multiplexing is not enabled, commands will not receive input from the terminal. \
+         If not running with a single thread, each output of the command will be buffered, \
+         reordered (printed to stdout before stderr) and synchronized to avoid overlap."
     );
 
     doc!(

@@ -129,9 +129,7 @@ OPTIONS:
 
         --max-buffer-time <milliseconds>
             The amount of time (in milliseconds) for the search results to be
-            buffered and sorted before printed to the terminal. This has nothing
-            to do with --exec, since the output can be messed up by printing in
-            parallel.
+            buffered and sorted before streaming.
 
     -x, --exec <program [argument]... [;]>
             Run the given command for each search result, which can be
@@ -141,7 +139,10 @@ OPTIONS:
             list.
             With --threads=1 commands will run sequentially. When multi
             -threading is enabled and multiplexing is not enabled, commands
-            will not receive input from the terminal.
+            will not receive input from the terminal. If not running with a
+            single thread, each output of the command will be buffered,
+            reordered (printed to stdout before stderr) and synchronized to
+            avoid overlap.
 
     -v, --verbose
             Show warnings about file permissions, loops caused by symlinks, I/O

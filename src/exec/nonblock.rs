@@ -15,18 +15,16 @@ fn loop_counter(counter: &mut u32) {
     *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
 }
 
-fn get_flag<T: AsRawFd>(obj: &T) -> libc::c_int {
-    unsafe {
-        libc::fcntl(obj.as_raw_fd(), libc::F_GETFL, 0 /* ignored */)
-    }
+unsafe fn get_flag<T: AsRawFd>(obj: &T) -> libc::c_int {
+    libc::fcntl(obj.as_raw_fd(), libc::F_GETFL, 0 /* ignored */)
 }
 
-fn set_flags<T: AsRawFd>(obj: &T, flags: libc::c_int) -> bool {
-    unsafe { libc::fcntl(obj.as_raw_fd(), libc::F_SETFL, flags) != -1 }
+unsafe fn set_flags<T: AsRawFd>(obj: &T, flags: libc::c_int) -> bool {
+    libc::fcntl(obj.as_raw_fd(), libc::F_SETFL, flags) != -1
 }
 
 // Return: whether it was nonblocking
-pub fn set_nonblocking<T: AsRawFd>(obj: &T) -> Result<bool, &str> {
+pub unsafe fn set_nonblocking<T: AsRawFd>(obj: &T) -> Result<bool, &str> {
     let flags = get_flag(obj);
 
     if (flags & libc::O_NONBLOCK) != 0 {
@@ -40,7 +38,7 @@ pub fn set_nonblocking<T: AsRawFd>(obj: &T) -> Result<bool, &str> {
 }
 
 // Return: whether it was blocking
-pub fn set_blocking<T: AsRawFd>(obj: &T) -> Result<bool, &str> {
+pub unsafe fn set_blocking<T: AsRawFd>(obj: &T) -> Result<bool, &str> {
     let flags = get_flag(obj);
 
     if (flags & libc::O_NONBLOCK) == 0 {

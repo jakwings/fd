@@ -117,9 +117,11 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 // Do not allow blocking I/O to delay the shutdown of this program.
                 // e.g. when waiting for user input.
                 let mut lock = stdin.lock();
-                let was_nonblocking = exec::set_nonblocking(&stdin).unwrap_or_else(|msg| {
-                    error(msg);
-                });
+                let was_nonblocking = unsafe {
+                    exec::set_nonblocking(&stdin).unwrap_or_else(|msg| {
+                        error(msg);
+                    })
+                };
                 let aborted = match exec::try_read_to_end(&rx_quitting, &mut lock, &mut bytes) {
                     Ok(None) => true,
                     Ok(Some(_size)) => false,
@@ -128,7 +130,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
 
                 // Restore the blocking mode.
                 if !was_nonblocking {
-                    if let Err(msg) = exec::set_blocking(&stdin) {
+                    if let Err(msg) = unsafe { exec::set_blocking(&stdin) } {
                         error(msg);
                     }
                 }

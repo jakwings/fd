@@ -52,7 +52,7 @@ pub fn schedule(
             if let Some(ref bytes) = *cached_input {
                 if let Some(mut stdin) = child.stdin.take() {
                     // Not necessary, but unblocking I/O helps to exit earlier.
-                    let is_nonblocking = if let Err(msg) = set_nonblocking(&stdin) {
+                    let is_nonblocking = if let Err(msg) = unsafe { set_nonblocking(&stdin) } {
                         warn(msg);
                         false
                     } else {

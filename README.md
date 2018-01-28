@@ -45,6 +45,14 @@ ff --regex --unicode . '^.$'  # matches filename π
 
 This is because the pattern matches byte strings by default.
 
+If you have a disk or partition for backup service, use the --mount flag to
+prevent deletion for files on it:
+
+```bash
+# Do not descend into /Volumes/YourTimeMachine through any symbolic link.
+ff $HOME .DS_Store --exec rm -v
+```
+
 ## Help
 
 ```

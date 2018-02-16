@@ -5,7 +5,8 @@ use std::sync::atomic::{self, AtomicBool};
 use std::thread;
 use std::time;
 
-use super::nix::{Errno, libc};
+use super::nix::errno::Errno;
+use super::nix::libc;
 
 const BUF_SIZE: usize = 512;
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds

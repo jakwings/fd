@@ -1,22 +1,31 @@
 #compdef ff
 
+autoload -U is-at-least
+
 _ff() {
     typeset -A opt_args
+    typeset -a _arguments_options
     local ret=1
 
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
     local context curcontext="$curcontext" state line
-    _arguments -s -S -C \
+    _arguments "${_arguments_options[@]}" \
 '-t+[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
-'--type+[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
+'--type=[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
 '-d+[Set maximum search depth. \[default: none\]]' \
-'--max-depth+[Set maximum search depth. \[default: none\]]' \
+'--max-depth=[Set maximum search depth. \[default: none\]]' \
 '-c+[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
-'--color+[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
+'--color=[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
 '-j+[Set number of threads for searching and command execution.]' \
-'--threads+[Set number of threads for searching and command execution.]' \
-'--max-buffer-time+[Set time (in milliseconds) for buffering and sorting.]' \
+'--threads=[Set number of threads for searching and command execution.]' \
+'--max-buffer-time=[Set time (in milliseconds) for buffering and sorting.]' \
 '-x+[Execute the given command for each search result.]' \
-'--exec+[Execute the given command for each search result.]' \
+'--exec=[Execute the given command for each search result.]' \
 '-g[Search with a glob pattern. \[default\]]' \
 '--glob[Search with a glob pattern. \[default\]]' \
 '-r[Search with a regex pattern. \[default: glob\]]' \
@@ -51,7 +60,9 @@ _ff() {
 '--help[Prints help information. Use --help for more details.]' \
 '-V[Prints version information]' \
 '--version[Prints version information]' \
-"1:: :_ff_commands" \
+'::DIRECTORY -- The root directory for the filesystem search. \[optional\]:_files' \
+'::PATTERN -- The search pattern, a regex or glob pattern. \[optional\]
+The default values for regex and glob are ^ and * respectively.:_files' \
 && ret=0
     
 }
@@ -59,18 +70,7 @@ _ff() {
 (( $+functions[_ff_commands] )) ||
 _ff_commands() {
     local commands; commands=(
-        "DIRECTORY:The root directory for the filesystem search. \[optional\]" \
-"PATTERN:The search pattern, a regex or glob pattern. \[optional\]
-The default values for regex and glob are ^ and * respectively." \
-    )
-    _describe -t commands 'ff commands' commands "$@"
-}
-(( $+functions[_ff_commands] )) ||
-_ff_commands() {
-    local commands; commands=(
-        "DIRECTORY:The root directory for the filesystem search. \[optional\]" \
-"PATTERN:The search pattern, a regex or glob pattern. \[optional\]
-The default values for regex and glob are ^ and * respectively." \
+        
     )
     _describe -t commands 'ff commands' commands "$@"
 }

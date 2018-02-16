@@ -13,9 +13,6 @@ _ff() {
                 cmd="ff"
                 ;;
             
-            ff)
-                cmd+="__ff"
-                ;;
             *)
                 ;;
         esac
@@ -31,19 +28,19 @@ _ff() {
             case "${prev}" in
                 
                 --type)
-                    COMPREPLY=("<filetype>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                     -t)
-                    COMPREPLY=("<filetype>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                 --max-depth)
-                    COMPREPLY=("<number>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                     -d)
-                    COMPREPLY=("<number>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                 --color)
@@ -55,23 +52,23 @@ _ff() {
                     return 0
                     ;;
                 --threads)
-                    COMPREPLY=("<number>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                     -j)
-                    COMPREPLY=("<number>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                 --max-buffer-time)
-                    COMPREPLY=("<milliseconds>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                 --exec)
-                    COMPREPLY=("<program [argument]... [;]>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                     -x)
-                    COMPREPLY=("<program [argument]... [;]>")
+                    COMPREPLY=($(compgen -f ${cur}))
                     return 0
                     ;;
                 *)

@@ -50,7 +50,7 @@ prevent deletion for files on it:
 
 ```bash
 # Do not descend into /Volumes/YourTimeMachine through any symbolic link.
-ff $HOME .DS_Store --mount --exec rm -v
+ff $HOME .DS_Store --mount --exec rm -v --
 ```
 
 ## Help

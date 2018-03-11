@@ -122,7 +122,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         error(msg);
                     })
                 };
-                // TODO: What about SIGKILL? https://github.com/Detegr/rust-ctrlc/pull/40
+                // TODO: What about SIGKILL? https://github.com/Detegr/rust-ctrlc/issues/30
                 let aborted = match exec::try_read_to_end(&rx_quitting, &mut lock, &mut bytes) {
                     Ok(None) => true,
                     Ok(Some(_size)) => false,

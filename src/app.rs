@@ -196,7 +196,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "same-filesystem",
         "Do not descend into directories on other filesystems.",
         "Do not descend into directories on other filesystems, \
-         as a symlink may point to a directory on another filesystem."
+         as a symlink or normal directory may lead to a file on another filesystem."
     );
 
     doc!(

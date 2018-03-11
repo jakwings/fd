@@ -345,7 +345,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 let _ = tx.send(entry_path.to_owned());
             }
 
-            if config.follow_symlink && config.same_filesystem && entry_path.is_dir() {
+            if config.same_filesystem && entry_path.is_dir() {
                 if !match_mountpoint(&mountpoint, &entry_path) {
                     // do not descend this directory
                     return WalkState::Skip;

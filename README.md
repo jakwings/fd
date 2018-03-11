@@ -86,7 +86,7 @@ OPTIONS:
 
     -M, --mount
             Do not descend into directories on other filesystems, as a symlink
-            may point to a directory on another filesystem.
+            or normal directory may lead to a file on another filesystem.
 
     -0, --print0
             Each search result is terminated with NUL instead of LF when

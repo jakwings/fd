@@ -122,10 +122,18 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         error(msg);
                     })
                 };
+                // TODO: What about SIGKILL? https://github.com/Detegr/rust-ctrlc/pull/40
                 let aborted = match exec::try_read_to_end(&rx_quitting, &mut lock, &mut bytes) {
                     Ok(None) => true,
                     Ok(Some(_size)) => false,
-                    Err(err) => error(&err.to_string()),
+                    Err(err) => {
+                        if !was_nonblocking {
+                            if let Err(msg) = unsafe { exec::set_blocking(&stdin) } {
+                                warn(msg);
+                            }
+                        }
+                        error(&err.to_string())
+                    }
                 };
 
                 // Restore the blocking mode.

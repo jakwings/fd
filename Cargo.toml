@@ -1,5 +1,5 @@
 [package]
-version = "0.15.1"
+version = "0.15.2"
 name    = "ff-find"
 license = "MIT/Apache-2.0"
 authors = [

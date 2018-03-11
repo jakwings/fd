@@ -49,7 +49,7 @@ If you have a disk or partition for backup service, use the --mount flag to
 prevent deletion for files on it:
 
 ```bash
-# Do not descend into /Volumes/YourTimeMachine through any symbolic link.
+# skip any directory or files on another disk or partition
 ff $HOME .DS_Store --mount --exec rm -v --
 ```
 

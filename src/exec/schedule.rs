@@ -1,11 +1,12 @@
 use std::io::{self, Write};
+use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::Receiver;
 
-use super::{ExecTemplate, warn, set_nonblocking, try_write_all};
+use super::{ExecTemplate, warn, select_write_all};
 
 // Each received input will generate a command with the supplied command template.
 // Then execute the generated command and wait for the child process.
@@ -51,20 +52,10 @@ pub fn schedule(
         if let Err(err) = cmd.execute(stdin, stdout, stderr).and_then(|mut child| {
             if let Some(ref bytes) = *cached_input {
                 if let Some(mut stdin) = child.stdin.take() {
-                    // Not necessary, but unblocking I/O helps to exit earlier.
-                    let is_nonblocking = if let Err(msg) = unsafe { set_nonblocking(&stdin) } {
-                        warn(msg);
-                        false
-                    } else {
-                        true
-                    };
+                    let fdin = stdin.as_raw_fd();
 
-                    if is_nonblocking {
-                        if try_write_all(&quitting, &mut stdin, bytes)?.is_none() {
-                            child.kill()?;
-                        }
-                    } else {
-                        stdin.write_all(bytes)?;
+                    if select_write_all(&quitting, fdin, &mut stdin, bytes)?.is_none() {
+                        child.kill()?;
                     }
                 } else {
                     warn(&format!("{:?}: failed to capture stdin", cmd.prog()));

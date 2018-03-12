@@ -1,5 +1,6 @@
 use std::io;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
@@ -111,37 +112,19 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         if let Some(ref cmd) = rx_config.command {
             // Broadcast the stdin input to all child processes.
             let cached_input = if rx_config.multiplex {
-                let mut bytes = Vec::new();
                 let stdin = io::stdin();
-
+                let fdin = stdin.as_raw_fd();
+                let mut lock = stdin.lock();
+                let mut bytes = Vec::new();
                 // Do not allow blocking I/O to delay the shutdown of this program.
                 // e.g. when waiting for user input.
-                let mut lock = stdin.lock();
-                let was_nonblocking = unsafe {
-                    exec::set_nonblocking(&stdin).unwrap_or_else(|msg| {
-                        error(msg);
-                    })
-                };
-                // TODO: What about SIGKILL? https://github.com/Detegr/rust-ctrlc/issues/30
-                let aborted = match exec::try_read_to_end(&rx_quitting, &mut lock, &mut bytes) {
-                    Ok(None) => true,
-                    Ok(Some(_size)) => false,
-                    Err(err) => {
-                        if !was_nonblocking {
-                            if let Err(msg) = unsafe { exec::set_blocking(&stdin) } {
-                                warn(msg);
-                            }
-                        }
-                        error(&err.to_string())
-                    }
-                };
+                let aborted =
+                    match exec::select_read_to_end(&rx_quitting, fdin, &mut lock, &mut bytes) {
+                        Ok(None) => true,
+                        Ok(Some(_size)) => false,
+                        Err(err) => error(&err.to_string()),
+                    };
 
-                // Restore the blocking mode.
-                if !was_nonblocking {
-                    if let Err(msg) = unsafe { exec::set_blocking(&stdin) } {
-                        error(msg);
-                    }
-                }
                 drop(lock);
 
                 if aborted {

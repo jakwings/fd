@@ -31,8 +31,6 @@ pub fn select_read_to_end<R: Read>(
     let mut counter = 0;
     let mut fdset = select::FdSet::new();
 
-    fdset.insert(fd);
-
     loop {
         if counter >= MAX_CNT && load_bool(&atom) {
             return Ok(None);
@@ -41,6 +39,8 @@ pub fn select_read_to_end<R: Read>(
         }
 
         let mut interval = TimeVal::nanoseconds(INTERVAL);
+
+        fdset.insert(fd);
 
         match select::select(
             Some(fd + 1),
@@ -65,7 +65,7 @@ pub fn select_read_to_end<R: Read>(
                     unreachable!("[Error] unknown bugs about select(2)");
                 }
             }
-            Err(Error::Sys(Errno::EINTR)) => (), // unavailable
+            Err(Error::Sys(Errno::EINTR)) => (),
             Err(err) => {
                 use std::error::Error;
 
@@ -88,8 +88,6 @@ pub fn select_write_all<W: Write>(
     let mut counter = 0;
     let mut fdset = select::FdSet::new();
 
-    fdset.insert(fd);
-
     loop {
         if counter >= MAX_CNT && load_bool(&atom) {
             return Ok(None);
@@ -99,6 +97,8 @@ pub fn select_write_all<W: Write>(
 
         let range = total..(BUF_SIZE + total).min(length);
         let mut interval = TimeVal::nanoseconds(INTERVAL);
+
+        fdset.insert(fd);
 
         match select::select(
             Some(fd + 1),
@@ -123,7 +123,7 @@ pub fn select_write_all<W: Write>(
                     unreachable!("[Error] unknown bugs about select(2)");
                 }
             }
-            Err(Error::Sys(Errno::EINTR)) => (), // unavailable
+            Err(Error::Sys(Errno::EINTR)) => (),
             Err(err) => {
                 use std::error::Error;
 

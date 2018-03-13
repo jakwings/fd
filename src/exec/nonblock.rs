@@ -9,7 +9,7 @@ use super::nix::sys::select;
 use super::nix::sys::time::{TimeVal, TimeValLike};
 
 const BUF_SIZE: usize = 512;
-const INTERVAL: u32 = 500 * 1000; // 500 microseconds
+const INTERVAL: i64 = 500 * 1000; // 500 microseconds
 const MAX_CNT: u32 = 500;
 
 fn loop_counter(counter: &mut u32) {
@@ -40,7 +40,7 @@ pub fn select_read_to_end<R: Read>(
             loop_counter(&mut counter);
         }
 
-        let mut interval = TimeVal::nanoseconds(INTERVAL as i64);
+        let mut interval = TimeVal::nanoseconds(INTERVAL);
 
         match select::select(
             Some(fd + 1),
@@ -61,6 +61,8 @@ pub fn select_read_to_end<R: Read>(
                             }
                         }
                     }
+                } else {
+                    unreachable!("[Error] unknown bugs about select(2)");
                 }
             }
             Err(Error::Sys(Errno::EINTR)) => (), // unavailable
@@ -96,7 +98,7 @@ pub fn select_write_all<W: Write>(
         }
 
         let range = total..(BUF_SIZE + total).min(length);
-        let mut interval = TimeVal::nanoseconds(INTERVAL as i64);
+        let mut interval = TimeVal::nanoseconds(INTERVAL);
 
         match select::select(
             Some(fd + 1),
@@ -117,6 +119,8 @@ pub fn select_write_all<W: Write>(
                             }
                         }
                     }
+                } else {
+                    unreachable!("[Error] unknown bugs about select(2)");
                 }
             }
             Err(Error::Sys(Errno::EINTR)) => (), // unavailable

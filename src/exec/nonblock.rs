@@ -42,6 +42,7 @@ pub fn select_read_to_end<R: Read>(
 
         fdset.insert(fd);
 
+        // XXX: unable to detect closed file descriptors
         match select::select(
             Some(fd + 1),
             Some(&mut fdset),

@@ -62,4 +62,4 @@ glob = "0.2"
 clap = "2"
 
 [features]
-simd-accel = [ "regex/simd-accel" ]
+simd-accel = [ "regex/unstable" ]

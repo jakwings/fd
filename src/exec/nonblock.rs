@@ -2,6 +2,8 @@ use std::io::{self, Read, Write};
 use std::os::unix::io::RawFd;
 use std::sync::Arc;
 use std::sync::atomic::{self, AtomicBool};
+use std::thread;
+use std::time;
 
 use super::nix::Error;
 use super::nix::errno::Errno;
@@ -9,7 +11,7 @@ use super::nix::sys::select;
 use super::nix::sys::time::{TimeVal, TimeValLike};
 
 const BUF_SIZE: usize = 512;
-const INTERVAL: i64 = 500 * 1000; // 500 microseconds
+const INTERVAL: u32 = 500 * 1000; // 500 microseconds
 const MAX_CNT: u32 = 500;
 
 fn loop_counter(counter: &mut u32) {
@@ -26,6 +28,7 @@ pub fn select_read_to_end<R: Read>(
     reader: &mut R,
     content: &mut Vec<u8>,
 ) -> io::Result<Option<usize>> {
+    let interval = time::Duration::new(0, INTERVAL);
     let mut total = 0;
     let mut buffer = [0; BUF_SIZE];
     let mut counter = 0;
@@ -38,7 +41,7 @@ pub fn select_read_to_end<R: Read>(
             loop_counter(&mut counter);
         }
 
-        let mut interval = TimeVal::nanoseconds(INTERVAL);
+        let mut waittime = TimeVal::zero();
 
         fdset.insert(fd);
 
@@ -48,7 +51,7 @@ pub fn select_read_to_end<R: Read>(
             Some(&mut fdset),
             None,
             None,
-            Some(&mut interval),
+            Some(&mut waittime),
         ) {
             Ok(0) => (), // timeout
             Ok(_) => {
@@ -60,6 +63,7 @@ pub fn select_read_to_end<R: Read>(
                             if err.kind() != io::ErrorKind::WouldBlock {
                                 return Err(err);
                             }
+                            thread::sleep(interval);
                         }
                     }
                 } else {
@@ -84,6 +88,7 @@ pub fn select_write_all<W: Write>(
     writer: &mut W,
     content: &Vec<u8>,
 ) -> io::Result<Option<()>> {
+    let interval = time::Duration::new(0, INTERVAL);
     let mut total = 0;
     let length = content.len();
     let mut counter = 0;
@@ -97,7 +102,7 @@ pub fn select_write_all<W: Write>(
         }
 
         let range = total..(BUF_SIZE + total).min(length);
-        let mut interval = TimeVal::nanoseconds(INTERVAL);
+        let mut waittime = TimeVal::zero();
 
         fdset.insert(fd);
 
@@ -106,7 +111,7 @@ pub fn select_write_all<W: Write>(
             None,
             Some(&mut fdset),
             None,
-            Some(&mut interval),
+            Some(&mut waittime),
         ) {
             Ok(0) => (), // timeout
             Ok(_) => {
@@ -118,6 +123,7 @@ pub fn select_write_all<W: Write>(
                             if err.kind() != io::ErrorKind::WouldBlock {
                                 return Err(err);
                             }
+                            thread::sleep(interval);
                         }
                     }
                 } else {

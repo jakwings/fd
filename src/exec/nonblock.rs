@@ -53,7 +53,10 @@ pub fn select_read_to_end<R: Read>(
             None,
             Some(&mut waittime),
         ) {
-            Ok(0) => (), // timeout
+            Ok(0) // timeout
+            | Err(Error::Sys(Errno::EINTR)) => {
+                thread::sleep(interval);
+            }
             Ok(_) => {
                 if fdset.contains(fd) {
                     match reader.read(&mut buffer) {
@@ -70,7 +73,6 @@ pub fn select_read_to_end<R: Read>(
                     unreachable!("[Error] unknown bugs about select(2)");
                 }
             }
-            Err(Error::Sys(Errno::EINTR)) => (),
             Err(err) => {
                 use std::error::Error;
 
@@ -113,7 +115,10 @@ pub fn select_write_all<W: Write>(
             None,
             Some(&mut waittime),
         ) {
-            Ok(0) => (), // timeout
+            Ok(0) // timeout
+            | Err(Error::Sys(Errno::EINTR)) => {
+                thread::sleep(interval);
+            }
             Ok(_) => {
                 if fdset.contains(fd) {
                     match writer.write(&content[range]) {
@@ -130,7 +135,6 @@ pub fn select_write_all<W: Write>(
                     unreachable!("[Error] unknown bugs about select(2)");
                 }
             }
-            Err(Error::Sys(Errno::EINTR)) => (),
             Err(err) => {
                 use std::error::Error;
 

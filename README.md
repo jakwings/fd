@@ -145,8 +145,8 @@ OPTIONS:
             does not contain any {}, then a {} will be appended as an argument
             to the program. A single semicolon ; will terminate the argument
             list.
-            With --threads=1 commands will run sequentially. When multi
-            -threading is enabled and multiplexing is not enabled, commands
+            With --threads=1 commands will run sequentially. When multi-
+            threading is enabled and multiplexing is not enabled, commands
             will not receive input from the terminal. If not running with a
             single thread, each output of the command will be buffered,
             reordered (printed to stdout before stderr) and synchronized to
@@ -179,7 +179,7 @@ ARGS:
 *   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
     *   Note: ff uses a variant of *globset*, which allows "backslash escape",
         i.e. `\<char>` drops the `\` and removes special effect of a character.
-*   Regex Syntax: https://docs.rs/regex/0.2.3/regex/#syntax
+*   Regex Syntax: https://docs.rs/regex/1.0.1/regex/#syntax
 
 Please note that the nitty-gritty of supported syntax may change in the future.
 There are still some todos noted in the source code.

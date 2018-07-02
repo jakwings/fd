@@ -43,9 +43,9 @@ clap = "2"
 ctrlc = { version = "3", features = ["termination"] }
 find_mountpoint = "1"
 ignore = "0.4"
-nix = "0.10"
+nix = "0.11"
 num_cpus = "1"
-regex = "0.2"
+regex = "1.0"
 #[globset]
 aho-corasick = "0.6.0"
 fnv = "1.0"

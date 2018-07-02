@@ -3,22 +3,22 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
 use super::atty;
 use super::ctrlc;
 use super::find_mountpoint::find_mountpoint;
-use super::ignore::{WalkState, WalkBuilder};
+use super::ignore::{WalkBuilder, WalkState};
 use super::nix::sys::signal::Signal::SIGINT;
 use super::regex::bytes::Regex;
 
 use super::exec;
 use super::fshelper::{is_executable, to_absolute_path};
-use super::internal::{AppOptions, error, warn};
+use super::internal::{error, warn, AppOptions};
 use super::output;
 
 #[derive(Clone, Copy, PartialEq)]

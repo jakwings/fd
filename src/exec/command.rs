@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::io;
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
-use std::process::{Command, Child, Stdio};
+use std::process::{Child, Command, Stdio};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExecCommand {
@@ -36,7 +36,8 @@ pub struct ExecTemplate {
 impl ExecTemplate {
     pub fn new(argv: &Vec<&OsStr>) -> ExecTemplate {
         let mut complete = false;
-        let mut argv: Vec<_> = argv.iter()
+        let mut argv: Vec<_> = argv
+            .iter()
             .map(|arg| {
                 if !complete && has_stubs(arg) {
                     complete = true;
@@ -83,7 +84,8 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
     while iter.peek().is_some() {
         let mut open = false;
 
-        let bytes = iter.by_ref()
+        let bytes = iter
+            .by_ref()
             .take_while(|c| {
                 open = c == &&b'{';
                 !open

@@ -2,11 +2,11 @@ use std::io::{self, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, Mutex};
 
-use super::{ExecTemplate, warn, select_write_all};
+use super::{select_write_all, warn, ExecTemplate};
 
 // Each received input will generate a command with the supplied command template.
 // Then execute the generated command and wait for the child process.

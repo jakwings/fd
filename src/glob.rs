@@ -1,7 +1,7 @@
 use super::globset;
 use super::regex::bytes::RegexBuilder;
 
-use super::internal::{AppOptions, error};
+use super::internal::{error, AppOptions};
 
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
 pub struct GlobBuilder {}

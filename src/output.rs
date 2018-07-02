@@ -1,14 +1,14 @@
 use std::io::{self, Write};
 use std::os::unix::ffi::OsStrExt;
-use std::path::{self, Path, PathBuf};
 use std::path::Component::{Prefix, RootDir};
+use std::path::{self, Path, PathBuf};
 use std::process::exit;
 
 use super::ansi_term::Style;
 use super::nix::sys::signal::Signal::SIGPIPE;
 
 use super::fshelper::{is_executable, is_symlink};
-use super::internal::{AppOptions, error};
+use super::internal::{error, AppOptions};
 use super::lscolors::LsColors;
 
 pub fn print_entry(entry: &Path, config: &AppOptions) {
@@ -99,13 +99,15 @@ fn get_path_style<'a>(path: &Path, ls_colors: &'a LsColors) -> Option<&'a Style>
         return Some(&ls_colors.executable);
     }
 
-    let filename_style = path.file_name()
+    let filename_style = path
+        .file_name()
         .and_then(|name| ls_colors.filenames.get(name));
     if filename_style.is_some() {
         return filename_style;
     }
 
-    let extension_style = path.extension()
+    let extension_style = path
+        .extension()
         .and_then(|ext| ls_colors.extensions.get(ext));
     if extension_style.is_some() {
         return extension_style;

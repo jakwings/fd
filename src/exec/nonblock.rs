@@ -1,14 +1,14 @@
 use std::io::{self, Read, Write};
 use std::os::unix::io::RawFd;
-use std::sync::Arc;
 use std::sync::atomic::{self, AtomicBool};
+use std::sync::Arc;
 use std::thread;
 use std::time;
 
-use super::nix::Error;
 use super::nix::errno::Errno;
 use super::nix::sys::select;
 use super::nix::sys::time::{TimeVal, TimeValLike};
+use super::nix::Error;
 
 const BUF_SIZE: usize = 512;
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds

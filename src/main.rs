@@ -29,7 +29,7 @@ use regex::bytes::RegexBuilder;
 use self::exec::ExecTemplate;
 use self::fshelper::{is_dir, to_absolute_path};
 use self::glob::GlobBuilder;
-use self::internal::{AppOptions, error, warn, int_error, int_error_os};
+use self::internal::{error, int_error, int_error_os, warn, AppOptions};
 use self::lscolors::LsColors;
 use self::walk::FileType;
 
@@ -44,7 +44,8 @@ fn main() {
     let mut root_dir = match args.value_of_os("DIRECTORY") {
         Some(path_str) => {
             let path = PathBuf::from(path_str);
-            if !path_str.is_empty() && path.is_relative()
+            if !path_str.is_empty()
+                && path.is_relative()
                 && !(path.starts_with(".") || path.starts_with(".."))
             {
                 PathBuf::from(".").join(path)
@@ -76,7 +77,8 @@ fn main() {
         },
     };
 
-    let max_depth = args.value_of("max-depth")
+    let max_depth = args
+        .value_of("max-depth")
         .map(|num_str| match usize::from_str_radix(num_str, 10) {
             Ok(num) => num,
             Err(err) => int_error("max-depth", num_str, &err.to_string()),
@@ -87,7 +89,8 @@ fn main() {
             })
         });
 
-    let max_buffer_time = args.value_of("max-buffer-time")
+    let max_buffer_time = args
+        .value_of("max-buffer-time")
         .map(|num_str| match u64::from_str_radix(num_str, 10) {
             Ok(num) => num,
             Err(err) => int_error("max-buffer-time", num_str, &err.to_string()),
@@ -99,7 +102,8 @@ fn main() {
         });
 
     let num_cpu = num_cpus::get();
-    let num_thread = args.value_of("threads")
+    let num_thread = args
+        .value_of("threads")
         .map(|num_str| match usize::from_str_radix(num_str, 10) {
             Ok(num) => if num > 0 {
                 num

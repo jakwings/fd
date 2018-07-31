@@ -47,7 +47,7 @@ nix = "0.11"
 num_cpus = "1"
 regex = "1.0"
 #[globset]
-aho-corasick = "0.6.0"
+aho-corasick = "0.6"
 fnv = "1.0"
 log = "0.4"
 memchr = "2"

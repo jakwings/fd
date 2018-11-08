@@ -40,8 +40,8 @@ _ff() {
 '--full-path[Match full paths. \[default: match filename\]]' \
 '-L[Follow symbolic links.]' \
 '--follow[Follow symbolic links.]' \
-'-M[Do not descend into directories on other filesystems.]' \
-'--mount[Do not descend into directories on other filesystems.]' \
+'-M[Do not descend into directories on other file systems.]' \
+'--mount[Do not descend into directories on other file systems.]' \
 '-0[Terminate each search result with NUL.]' \
 '--print0[Terminate each search result with NUL.]' \
 '-A[Output absolute paths instead of relative paths.]' \
@@ -56,11 +56,11 @@ _ff() {
 '--multiplex[All executed commands receive the same input.]' \
 '-v[Warn about I/O errors, file permissions, symlink loops, etc.]' \
 '--verbose[Warn about I/O errors, file permissions, symlink loops, etc.]' \
-'-h[Prints help information. Use --help for more details.]' \
-'--help[Prints help information. Use --help for more details.]' \
+'-h[Prints help information. Use --help to show details and full list of options.]' \
+'--help[Prints help information. Use --help to show details and full list of options.]' \
 '-V[Prints version information]' \
 '--version[Prints version information]' \
-'::DIRECTORY -- The root directory for the filesystem search. \[optional\]:_files' \
+'::DIRECTORY -- The root directory for the search. \[optional\]:_files' \
 '::PATTERN -- The search pattern, a regex or glob pattern. \[optional\]
 The default values for regex and glob are ^ and * respectively.:_files' \
 && ret=0

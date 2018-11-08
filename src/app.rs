@@ -44,7 +44,6 @@ pub fn build() -> App<'static, 'static> {
             AppSettings::DeriveDisplayOrder,
             AppSettings::DontCollapseArgsInUsage,
             AppSettings::HidePossibleValuesInHelp,
-            AppSettings::NextLineHelp,
             AppSettings::UnifiedHelpMessage,
             AppSettings::VersionlessSubcommands,
         ])
@@ -52,12 +51,16 @@ pub fn build() -> App<'static, 'static> {
         .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
         .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN]]")
-        .help_message("Prints help information. Use --help for more details.")
+        .help_message(
+            "Prints help information. \
+             Use --help to show details and full list of options.",
+        )
         .arg(
             arg("use-glob")
                 .long("glob")
                 .short("g")
-                .overrides_with("use-regex"),
+                .overrides_with("use-regex")
+                .hidden_short_help(true),
         )
         .arg(
             arg("use-regex")
@@ -76,30 +79,68 @@ pub fn build() -> App<'static, 'static> {
             arg("case-sensitive")
                 .long("case-sensitive")
                 .short("s")
-                .overrides_with("ignore-case"),
+                .overrides_with("ignore-case")
+                .hidden_short_help(true),
         )
-        .arg(arg("full-path").long("full-path").short("p"))
-        .arg(arg("follow-symlink").long("follow").short("L"))
-        .arg(arg("same-filesystem").long("mount").short("M"))
-        .arg(arg("null_terminator").long("print0").short("0"))
-        .arg(arg("absolute-path").long("absolute-path").short("A"))
-        .arg(arg("sort-path").long("sort-path").short("S"))
+        .arg(
+            arg("full-path")
+                .long("full-path")
+                .short("p")
+                .hidden_short_help(true),
+        )
+        .arg(
+            arg("follow-symlink")
+                .long("follow")
+                .short("L")
+                .hidden_short_help(true),
+        )
+        .arg(
+            arg("same-filesystem")
+                .long("mount")
+                .short("M")
+                .hidden_short_help(true),
+        )
+        .arg(
+            arg("null_terminator")
+                .long("print0")
+                .short("0")
+                .hidden_short_help(true),
+        )
+        .arg(
+            arg("absolute-path")
+                .long("absolute-path")
+                .short("A")
+                .hidden_short_help(true),
+        )
+        .arg(
+            arg("sort-path")
+                .long("sort-path")
+                .short("S")
+                .hidden_short_help(true),
+        )
         .arg(arg("dot-files").long("all").short("a"))
         .arg(arg("no-ignore").long("no-ignore").short("I"))
-        .arg(arg("multiplex").long("multiplex").short("m"))
+        .arg(
+            arg("multiplex")
+                .long("multiplex")
+                .short("m")
+                .hidden_short_help(true),
+        )
         .arg(
             arg("file-type")
                 .long("type")
                 .short("t")
                 .takes_value(true)
-                .value_name("filetype"),
+                .value_name("filetype")
+                .hidden_short_help(true),
         )
         .arg(
             arg("max-depth")
                 .long("max-depth")
                 .short("d")
                 .takes_value(true)
-                .value_name("number"),
+                .value_name("number")
+                .hidden_short_help(true),
         )
         .arg(
             arg("color")
@@ -107,20 +148,23 @@ pub fn build() -> App<'static, 'static> {
                 .short("c")
                 .takes_value(true)
                 .value_name("when")
-                .possible_values(&["auto", "never", "always"]),
+                .possible_values(&["auto", "never", "always"])
+                .hidden_short_help(true),
         )
         .arg(
             arg("threads")
                 .long("threads")
                 .short("j")
                 .takes_value(true)
-                .value_name("number"),
+                .value_name("number")
+                .hidden_short_help(true),
         )
         .arg(
             arg("max-buffer-time")
                 .long("max-buffer-time")
                 .takes_value(true)
-                .value_name("milliseconds"),
+                .value_name("milliseconds")
+                .hidden_short_help(true),
         )
         .arg(
             arg("exec")
@@ -129,7 +173,8 @@ pub fn build() -> App<'static, 'static> {
                 .allow_hyphen_values(true)
                 .value_name("program [argument]... [;]")
                 .value_terminator(";")
-                .min_values(1),
+                .min_values(1)
+                .hidden_short_help(true),
         )
         .arg(arg("verbose").long("verbose").short("v"))
         .arg(arg("DIRECTORY").default_value(".").empty_values(false))

@@ -39,7 +39,7 @@ path = "src/globset/src/lib.rs"
 [dependencies]
 ansi_term = "0.11"
 atty = "0.2"
-clap = "2"
+clap = "~2.32"
 ctrlc = { version = "3", features = ["termination"] }
 find_mountpoint = "1"
 ignore = "0.4"

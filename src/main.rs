@@ -38,7 +38,7 @@ fn main() {
 
     let current_dir = PathBuf::from(".");
     if !is_dir(&current_dir) {
-        error("cannot get current directory");
+        error("could not get current directory");
     }
 
     let mut root_dir = match args.value_of_os("DIRECTORY") {

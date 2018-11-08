@@ -85,7 +85,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
     let mountpoint = if config.same_filesystem {
         find_mountpoint(&root).unwrap_or_else(|_| {
             error(&format!(
-                "cannot get the mount point of {:?}",
+                "could not get the mount point of {:?}",
                 root.as_os_str()
             ))
         })
@@ -101,7 +101,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         ctrlc::set_handler(move || {
             atom.store(true, atomic::Ordering::Relaxed);
         })
-        .expect("[Error] cannot set Ctrl-C handler");
+        .expect("[Error] could not set Ctrl-C handler");
     }
 
     // Spawn the thread that receives all results through the channel.
@@ -290,7 +290,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                             } else {
                                 if !file_type.is_symlink() {
                                     warn(&format!(
-                                        "cannot get metadata of {:?}",
+                                        "could not get metadata of {:?}",
                                         entry_path.as_os_str()
                                     ));
                                     return WalkState::Continue;
@@ -306,7 +306,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                     }
                 } else {
                     warn(&format!(
-                        "cannot get file type of {:?}",
+                        "could not get file type of {:?}",
                         entry_path.as_os_str()
                     ));
                     return WalkState::Continue;
@@ -321,7 +321,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         }
                     } else {
                         error(&format!(
-                            "cannot get full path of {:?}",
+                            "could not get full path of {:?}",
                             entry_path.as_os_str()
                         ));
                     }
@@ -364,7 +364,7 @@ fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {
         .map(|path_buf| mountpoint == path_buf.as_path())
         .unwrap_or_else(|_| {
             error(&format!(
-                "cannot get the mount point of {:?}",
+                "could not get the mount point of {:?}",
                 path.as_os_str()
             ))
         })

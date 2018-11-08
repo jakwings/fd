@@ -257,20 +257,21 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 return WalkState::Quit;
             }
 
-            // https://docs.rs/walkdir/2.0.1/walkdir/struct.DirEntry.html
+            // https://docs.rs/walkdir/2.2.5/walkdir/struct.DirEntry.html
             let entry = match entry_o {
                 Ok(ref entry) => {
                     if entry.depth() != 0 {
                         entry
                     } else {
+                        // TODO: need to suppress some warnings from deps
                         return WalkState::Continue;
                     }
                 }
                 Err(ref err) => {
-                    if config.verbose {
+                    if !err.is_partial() || config.verbose {
                         warn(&err.to_string())
                     }
-                    return WalkState::Continue;
+                    return WalkState::Skip;
                 }
             };
             let entry_path = entry.path();
@@ -288,12 +289,10 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                                 meta.is_dir() || !is_executable(&meta)
                             } else {
                                 if !file_type.is_symlink() {
-                                    if config.verbose {
-                                        warn(&format!(
-                                            "cannot get metadata of {:?}",
-                                            entry_path.as_os_str()
-                                        ));
-                                    }
+                                    warn(&format!(
+                                        "cannot get metadata of {:?}",
+                                        entry_path.as_os_str()
+                                    ));
                                     return WalkState::Continue;
                                 } else {
                                     // symlinks to non-existent files
@@ -306,12 +305,10 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         return WalkState::Continue;
                     }
                 } else {
-                    if config.verbose {
-                        warn(&format!(
-                            "cannot get file type of {:?}",
-                            entry_path.as_os_str()
-                        ));
-                    }
+                    warn(&format!(
+                        "cannot get file type of {:?}",
+                        entry_path.as_os_str()
+                    ));
                     return WalkState::Continue;
                 }
             }

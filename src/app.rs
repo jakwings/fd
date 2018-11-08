@@ -95,13 +95,13 @@ pub fn build() -> App<'static, 'static> {
                 .hidden_short_help(true),
         )
         .arg(
-            arg("same-filesystem")
+            arg("same-file-system")
                 .long("mount")
                 .short("M")
                 .hidden_short_help(true),
         )
         .arg(
-            arg("null_terminator")
+            arg("null-terminator")
                 .long("print0")
                 .short("0")
                 .hidden_short_help(true),
@@ -238,15 +238,15 @@ fn get_help() -> HashMap<&'static str, Help> {
 
     doc!(
         help,
-        "same-filesystem",
-        "Do not descend into directories on other filesystems.",
-        "Do not descend into directories on other filesystems, \
-         as a symlink or normal directory may lead to a file on another filesystem."
+        "same-file-system",
+        "Do not descend into directories on other file systems.",
+        "Do not descend into directories on other file systems, \
+         as a symlink or normal directory may lead to a file on another file system."
     );
 
     doc!(
         help,
-        "null_terminator",
+        "null-terminator",
         "Terminate each search result with NUL.",
         "Each search result is terminated with NUL instead of LF when printed."
     );
@@ -365,8 +365,8 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "DIRECTORY",
-        "The root directory for the filesystem search. [optional]",
-        "The directory where the filesystem search is rooted. \
+        "The root directory for the search. [optional]",
+        "The directory where the search is rooted. \
          If omitted, search the current working directory."
     );
 

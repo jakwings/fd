@@ -2,7 +2,6 @@ extern crate ansi_term;
 extern crate atty;
 extern crate clap;
 extern crate ctrlc;
-extern crate find_mountpoint;
 extern crate globset;
 extern crate ignore;
 extern crate nix;
@@ -156,8 +155,8 @@ fn main() {
         read_ignore: !args.is_present("no-ignore"),
         multiplex: args.is_present("multiplex"),
         follow_symlink: args.is_present("follow-symlink"),
-        same_filesystem: args.is_present("same-filesystem"),
-        null_terminator: args.is_present("null_terminator"),
+        same_file_system: args.is_present("same-file-system"),
+        null_terminator: args.is_present("null-terminator"),
         command: command,
         ls_colors: ls_colors,
         max_buffer_time: max_buffer_time,

@@ -1,7 +1,7 @@
 use std::io;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::exit;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::channel;
@@ -11,7 +11,6 @@ use std::time;
 
 use super::atty;
 use super::ctrlc;
-use super::find_mountpoint::find_mountpoint;
 use super::ignore::{WalkBuilder, WalkState};
 use super::nix::sys::signal::Signal::SIGINT;
 use super::regex::bytes::Regex;
@@ -79,20 +78,6 @@ fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
 pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
     let (tx, rx) = channel();
     let threads = config.threads;
-
-    // The root directory of the file system,
-    // similar to PrefixComponent (C:, D:, \\server\share, etc.) on Windows.
-    let mountpoint = if config.same_filesystem {
-        find_mountpoint(&root).unwrap_or_else(|_| {
-            error(&format!(
-                "could not get the mount point of {:?}",
-                root.as_os_str()
-            ))
-        })
-    } else {
-        PathBuf::new()
-    };
-    let mountpoint = Arc::new(mountpoint);
 
     // A signal to tell the colorizer or the command processor to exit gracefully.
     let quitting = Arc::new(AtomicBool::new(false));
@@ -239,6 +224,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         .parents(config.read_ignore)
         .git_global(config.read_ignore)
         .git_exclude(config.read_ignore)
+        .same_file_system(config.same_file_system)
         .follow_links(config.follow_symlink)
         .max_depth(config.max_depth)
         .threads(threads)
@@ -249,7 +235,6 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         let tx = tx.clone();
         let config = Arc::clone(&config);
         let pattern = Arc::clone(&pattern);
-        let mountpoint = Arc::clone(&mountpoint);
 
         let quitting = Arc::clone(&tx_quitting);
         Box::new(move |entry_o| {
@@ -336,13 +321,6 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 let _ = tx.send(entry_path.to_owned());
             }
 
-            if config.same_filesystem && entry_path.is_dir() {
-                if !match_mountpoint(&mountpoint, &entry_path) {
-                    // do not descend this directory
-                    return WalkState::Skip;
-                }
-            }
-
             WalkState::Continue
         })
     });
@@ -357,15 +335,4 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         .expect("[Error] unable to collect search results");
 
     exit_if_sigint(&quitting);
-}
-
-fn match_mountpoint(mountpoint: &Path, path: &Path) -> bool {
-    find_mountpoint(path)
-        .map(|path_buf| mountpoint == path_buf.as_path())
-        .unwrap_or_else(|_| {
-            error(&format!(
-                "could not get the mount point of {:?}",
-                path.as_os_str()
-            ))
-        })
 }

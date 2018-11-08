@@ -41,7 +41,7 @@ pub struct AppOptions {
     pub follow_symlink: bool,
 
     // Whether the search is limited for files on the same filesystem.
-    pub same_filesystem: bool,
+    pub same_file_system: bool,
 
     // Whether each search result is terminated with NUL instead of LF when printed.
     pub null_terminator: bool,

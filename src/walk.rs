@@ -100,7 +100,8 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         let atom = Arc::clone(&quitting);
         ctrlc::set_handler(move || {
             atom.store(true, atomic::Ordering::Relaxed);
-        }).expect("[Error] cannot set Ctrl-C handler");
+        })
+        .expect("[Error] cannot set Ctrl-C handler");
     }
 
     // Spawn the thread that receives all results through the channel.
@@ -258,11 +259,13 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
 
             // https://docs.rs/walkdir/2.0.1/walkdir/struct.DirEntry.html
             let entry = match entry_o {
-                Ok(ref entry) => if entry.depth() != 0 {
-                    entry
-                } else {
-                    return WalkState::Continue;
-                },
+                Ok(ref entry) => {
+                    if entry.depth() != 0 {
+                        entry
+                    } else {
+                        return WalkState::Continue;
+                    }
+                }
                 Err(ref err) => {
                     if config.verbose {
                         warn(&err.to_string())

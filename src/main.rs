@@ -70,11 +70,13 @@ fn main() {
         Some("f") | Some("file") => FileType::Regular,
         Some("l") | Some("symlink") => FileType::SymLink,
         Some("x") | Some("executable") => FileType::Executable,
-        Some(_) | None => if let Some(sym) = args.value_of_os("file-type") {
-            error(&format!("unrecognizable file type {:?}", sym))
-        } else {
-            FileType::Any
-        },
+        Some(_) | None => {
+            if let Some(sym) = args.value_of_os("file-type") {
+                error(&format!("unrecognizable file type {:?}", sym))
+            } else {
+                FileType::Any
+            }
+        }
     };
 
     let max_depth = args
@@ -105,11 +107,13 @@ fn main() {
     let num_thread = args
         .value_of("threads")
         .map(|num_str| match usize::from_str_radix(num_str, 10) {
-            Ok(num) => if num > 0 {
-                num
-            } else {
-                num_cpu
-            },
+            Ok(num) => {
+                if num > 0 {
+                    num
+                } else {
+                    num_cpu
+                }
+            }
             Err(err) => int_error("threads", num_str, &err.to_string()),
         })
         .or_else(|| {

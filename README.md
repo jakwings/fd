@@ -85,8 +85,8 @@ OPTIONS:
             Follow symlinks and traverse the symlinked directories.
 
     -M, --mount
-            Do not descend into directories on other filesystems, as a symlink
-            or normal directory may lead to a file on another filesystem.
+            Do not descend into directories on other file systems, as a symlink
+            or normal directory may lead to a file on another file system.
 
     -0, --print0
             Each search result is terminated with NUL instead of LF when
@@ -157,16 +157,16 @@ OPTIONS:
             errors, invalid file content, etc.
 
     -h, --help
-            Prints help information. Use --help for more details.
-
+            Prints help information. Use --help to show details and full list of
+            options.
     -V, --version
             Prints version information
 
 
 ARGS:
     <DIRECTORY>
-            The directory where the filesystem search is rooted. If omitted,
-            search the current working directory.
+            The directory where the search is rooted. If omitted, search the
+            current working directory.
 
     <PATTERN>
             The search pattern, a regex or glob pattern. [optional]
@@ -179,7 +179,7 @@ ARGS:
 *   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
     *   Note: ff uses a variant of *globset*, which allows "backslash escape",
         i.e. `\<char>` drops the `\` and removes special effect of a character.
-*   Regex Syntax: https://docs.rs/regex/1.0.1/regex/#syntax
+*   Regex Syntax: https://docs.rs/regex/1.0/regex/#syntax
 
 Please note that the nitty-gritty of supported syntax may change in the future.
 There are still some todos noted in the source code.

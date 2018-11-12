@@ -43,7 +43,7 @@ pub enum FileType {
     Executable,
 }
 
-pub struct DirEntry<'a> {
+struct DirEntry<'a> {
     path: &'a Path,
     file_type: Option<EntryFileType>,
 }

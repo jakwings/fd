@@ -5,10 +5,17 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
+    // TODO: Provide a flag --real-path for canonicalization of file path?
+    //       Logical: resolve '..' components before symlinks (Windows)
+    //       Physical: resolve symlinks as encountered (Unix)
+    // NOTE: A path like /root/../compo is considered an absolute path, seriously.
+    //       An absolute path is not always a real path (with symlinks fully resolved).
     if path.is_absolute() {
         Ok(path.to_path_buf())
     } else {
         let path = path.strip_prefix(".").unwrap_or(path);
+        // NOTE: Unfortunately, current_dir() is always a "real" path on Unix.
+        //       Always pass in an absolute path if you don't want it!
         current_dir().map(|path_buf| path_buf.join(path))
     }
 }

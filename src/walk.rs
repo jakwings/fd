@@ -265,6 +265,8 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 Err(ref err) => {
                     let mut broken_symlink = None;
 
+                    // https://docs.rs/walkdir/2.2.6/walkdir/struct.WalkDir.html#method.follow_links
+                    // > If a symbolic link is broken or is involved in a loop, an error is yielded.
                     if let ignore::Error::WithPath { path, err: _ } = err {
                         if !path.exists() {
                             if let Ok(meta) = path.symlink_metadata() {

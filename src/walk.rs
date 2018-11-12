@@ -1,4 +1,6 @@
+use std::fs::FileType as EntryFileType;
 use std::io;
+use std::option::Option;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
@@ -11,7 +13,7 @@ use std::time;
 
 use super::atty;
 use super::ctrlc;
-use super::ignore::{WalkBuilder, WalkState};
+use super::ignore::{self, WalkBuilder, WalkState};
 use super::nix::sys::signal::Signal::SIGINT;
 use super::regex::bytes::Regex;
 
@@ -39,6 +41,11 @@ pub enum FileType {
     Regular,
     SymLink,
     Executable,
+}
+
+pub struct DirEntry<'a> {
+    path: &'a Path,
+    file_type: Option<EntryFileType>,
 }
 
 const MAX_CNT: u32 = 500;
@@ -242,27 +249,50 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 return WalkState::Quit;
             }
 
-            // https://docs.rs/walkdir/2.2.5/walkdir/struct.DirEntry.html
+            // https://docs.rs/walkdir/2.2.6/walkdir/struct.DirEntry.html
             let entry = match entry_o {
                 Ok(ref entry) => {
                     if entry.depth() != 0 {
-                        entry
+                        DirEntry {
+                            path: entry.path(),
+                            file_type: entry.file_type(),
+                        }
                     } else {
                         // TODO: need to suppress some warnings from deps
                         return WalkState::Continue;
                     }
                 }
                 Err(ref err) => {
-                    if !err.is_partial() || config.verbose {
-                        warn(&err.to_string())
+                    let mut broken_symlink = None;
+
+                    if let ignore::Error::WithPath { path, err: _ } = err {
+                        if !path.exists() {
+                            if let Ok(meta) = path.symlink_metadata() {
+                                let file_type = meta.file_type();
+
+                                if file_type.is_symlink() {
+                                    broken_symlink = Some(DirEntry {
+                                        path,
+                                        file_type: Some(file_type),
+                                    });
+                                }
+                            }
+                        }
                     }
-                    return WalkState::Skip;
+                    if broken_symlink.is_some() {
+                        broken_symlink.unwrap()
+                    } else {
+                        if !err.is_partial() || config.verbose {
+                            warn(&err.to_string());
+                        }
+                        return WalkState::Skip;
+                    }
                 }
             };
-            let entry_path = entry.path();
+            let entry_path = entry.path;
 
             if config.file_type != FileType::Any {
-                if let Some(file_type) = entry.file_type() {
+                if let Some(file_type) = entry.file_type {
                     let to_skip = match config.file_type {
                         FileType::Any => false,
                         FileType::Directory => !file_type.is_dir(),

@@ -36,7 +36,8 @@ fn test_simple() {
          ./one/two/three
          ./one/two/three/d.foo
          ./one/two/three/directory_foo
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 }
 
@@ -60,7 +61,8 @@ fn test_glob_searches() {
          ./one/two/three
          ./one/two/three/d.foo
          ./one/two/three/directory_foo
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(
@@ -77,7 +79,8 @@ fn test_glob_searches() {
          ./one/two/three
          ./one/two/three/d.foo
          ./one/two/three/directory_foo
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(
@@ -105,7 +108,8 @@ fn test_glob_searches() {
          ./one/two/three
          ./one/two/three/d.foo
          ./one/two/three/directory_foo
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(
@@ -162,7 +166,8 @@ fn test_regex_searches() {
          ./one/two/three
          ./one/two/three/d.foo
          ./one/two/three/directory_foo
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(
@@ -179,7 +184,8 @@ fn test_regex_searches() {
          ./one/two/three
          ./one/two/three/d.foo
          ./one/two/three/directory_foo
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(true, &["--regex", ".", "a.foo"], "./a.foo");
@@ -393,6 +399,29 @@ fn test_follow() {
 
     env.assert_output(
         true,
+        &["--follow"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink/C.Foo2
+         ./symlink/c.foo
+         ./symlink/three
+         ./symlink/three/d.foo
+         ./symlink/three/directory_foo
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
         &["--regex", ".", "c.foo", "--follow"],
         "./one/two/c.foo
          ./symlink/c.foo",
@@ -430,7 +459,8 @@ fn test_max_depth() {
          ./one/two/C.Foo2
          ./one/two/c.foo
          ./one/two/three
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(
@@ -442,7 +472,8 @@ fn test_max_depth() {
          ./one.two
          ./one/b.foo
          ./one/two
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(
@@ -452,7 +483,8 @@ fn test_max_depth() {
          ./α β
          ./one
          ./one.two
-         ./symlink",
+         ./symlink
+         ./symlink2",
     );
 
     env.assert_output(true, &["--max-depth", "0"], "");
@@ -479,7 +511,8 @@ fn test_absolute_path() {
              {abs_path}/one/two/three
              {abs_path}/one/two/three/d.foo
              {abs_path}/one/two/three/directory_foo
-             {abs_path}/symlink",
+             {abs_path}/symlink
+             {abs_path}/symlink2",
             abs_path = abs_path
         ),
     );
@@ -529,6 +562,7 @@ fn test_sort_path() {
          ./one/two/three/directory_foo
          ./one.two
          ./symlink
+         ./symlink2
          ./α β",
     );
 }
@@ -558,7 +592,12 @@ fn test_type() {
          ./one/two/three/directory_foo",
     );
 
-    env.assert_output(true, &["--type", "l"], "./symlink");
+    env.assert_output(
+        true,
+        &["--type", "l"],
+        "./symlink
+         ./symlink2",
+    );
 
     env.assert_output(true, &["--type", "x"], "./a.foo");
 }
@@ -599,7 +638,8 @@ fn test_symlink() {
              {dir}/one/two/three
              {dir}/one/two/three/d.foo
              {dir}/one/two/three/directory_foo
-             {dir}/symlink",
+             {dir}/symlink
+             {dir}/symlink2",
             dir = parent_parent
         ),
     );

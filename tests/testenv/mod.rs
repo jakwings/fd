@@ -42,6 +42,9 @@ fn create_working_directory() -> Result<TempDir, io::Error> {
         fs::File::create(root.join("α β"))?;
 
         unix::fs::symlink(root.join("one/two"), root.join("symlink"))?;
+        fs::File::create(root.join("deleted"))?;
+        unix::fs::symlink(root.join("deleted"), root.join("symlink2"))?;
+        fs::remove_file(root.join("deleted"))?;
 
         fs::File::create(root.join(".ignore"))?.write_all(b"ignored.foo")?;
     }

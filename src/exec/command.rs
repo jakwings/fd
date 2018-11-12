@@ -95,6 +95,8 @@ fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {
         buffer.push(OsString::from_vec(bytes));
 
         // TODO: {filename} {basename} {extension} {dirname}
+        //       --batch-size N --batch-exec: {1} {2} {3} ... {N} {-1} {1:3}
+        //       I hope "ff --exec" is faster than "ff -0 | xargs".
         if open && iter.peek() == Some(&&b'}') {
             buffer.push(path.as_os_str());
             iter.next();

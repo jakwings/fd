@@ -268,17 +268,12 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                     // https://docs.rs/walkdir/2.2.6/walkdir/struct.WalkDir.html#method.follow_links
                     // > If a symbolic link is broken or is involved in a loop, an error is yielded.
                     if let ignore::Error::WithPath { path, err: _ } = err {
-                        if !path.exists() {
-                            if let Ok(meta) = path.symlink_metadata() {
-                                let file_type = meta.file_type();
+                        if !err.is_partial() && !path.exists() {
+                            let file_type =
+                                path.symlink_metadata().map(|meta| meta.file_type()).ok();
 
-                                if file_type.is_symlink() {
-                                    broken_symlink = Some(DirEntry {
-                                        path,
-                                        file_type: Some(file_type),
-                                    });
-                                }
-                            }
+                            // Other than symlinks, what may not exist?
+                            broken_symlink = Some(DirEntry { path, file_type });
                         }
                     }
                     if broken_symlink.is_some() {

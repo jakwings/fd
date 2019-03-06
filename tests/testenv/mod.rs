@@ -95,12 +95,12 @@ fn format_output_error(args: &[&str], expected: &str, actual: &str) -> String {
     )
 }
 
-fn normalize_output(s: &str, trim_left: bool, sort: bool) -> String {
+fn normalize_output(s: &str, trim: bool, sort: bool) -> String {
     let text = s.replace('\0', "NULL\n");
     let mut lines = text
         .lines()
         .into_iter()
-        .map(|line| if trim_left { line.trim_left() } else { line })
+        .map(|line| if trim { line.trim_start() } else { line })
         .collect::<Vec<_>>();
 
     if sort {

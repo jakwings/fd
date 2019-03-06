@@ -49,9 +49,15 @@ pub fn build() -> App<'static, 'static> {
         .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
         .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN]]")
+        .about("A simple and fast utility for file search on Unix commandline.")
         .help_message(
             "Prints help information. \
              Use --help to show details and full list of options.",
+        )
+        .after_help(
+            "NOTE: If the value of environment variable PWD \
+             is the path of a symlink pointing to the current working directory, \
+             it will be used for resolving the absolute path of a relative path.",
         )
         .arg(
             arg("use-glob")

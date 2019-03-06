@@ -4,9 +4,12 @@ extern crate clap;
 extern crate ctrlc;
 extern crate globset;
 extern crate ignore;
+#[macro_use]
+extern crate lazy_static;
 extern crate nix;
 extern crate num_cpus;
 extern crate regex;
+extern crate same_file;
 
 mod app;
 mod exec;

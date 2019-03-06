@@ -1,8 +1,29 @@
-use std::env::current_dir;
+use std::env;
 use std::fs;
 use std::io;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+
+use super::same_file::is_same_file;
+
+lazy_static! {
+    static ref PWD: PathBuf = {
+        // NOTE: Unfortunately, current_dir() is always a "real" path on Unix.
+        //       Always pass in an absolute path if you don't want that!
+        //       Solution: Respect the environment variable "PWD".
+        env::current_dir().map(|cwd| {
+            env::var_os("PWD").map_or(PathBuf::new(), |path| {
+                let pwd = PathBuf::from(path);
+
+                if is_same_file(&cwd, &pwd).unwrap_or(false) {
+                    pwd
+                } else {
+                    cwd
+                }
+            })
+        }).unwrap()
+    };
+}
 
 pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
     // TODO: Provide a flag --real-path for canonicalization of file path?
@@ -14,9 +35,15 @@ pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
         Ok(path.to_path_buf())
     } else {
         let path = path.strip_prefix(".").unwrap_or(path);
-        // NOTE: Unfortunately, current_dir() is always a "real" path on Unix.
-        //       Always pass in an absolute path if you don't want it!
-        current_dir().map(|path_buf| path_buf.join(path))
+
+        if !(*PWD).as_os_str().is_empty() {
+            Ok((*PWD).join(path))
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Uninitialized PWD found",
+            ))
+        }
     }
 }
 

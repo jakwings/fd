@@ -42,12 +42,14 @@ atty = "0.2"
 clap = "~2.32"
 ctrlc = { version = "3", features = ["termination"] }
 ignore = "^0.4.4"
-nix = "0.12"
+lazy_static = "1"
+nix = "0.13"
 num_cpus = "1"
-regex = "1.0"
+regex = "1"
+same-file = "1"
 #[globset]
 aho-corasick = "0.6"
-fnv = "1.0"
+fnv = "1"
 log = "0.4"
 memchr = "2"
 

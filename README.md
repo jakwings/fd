@@ -171,15 +171,21 @@ ARGS:
     <PATTERN>
             The search pattern, a regex or glob pattern. [optional]
             The default values for regex and glob are ^ and * respectively.
+
+
+NOTE: If the value of environment variable PWD is the path of a symlink pointing
+to the current working directory, it will be used for resolving the absolute
+path of a relative path.
 ```
 
 
 ## References
 
-*   Glob Syntax: https://docs.rs/globset/0.2.1/globset/#syntax
-    *   Note: ff uses a variant of *globset*, which allows "backslash escape",
-        i.e. `\<char>` drops the `\` and removes special effect of a character.
-*   Regex Syntax: https://docs.rs/regex/1.0/regex/#syntax
+*   Glob Syntax: https://docs.rs/globset/0.4.2/globset/#syntax
+    *   Note: ff uses a variant of *globset* which behaves slightly differently
+        for "backslash escape", i.e. `\<char>` drops the `\` and removes special
+        effect of a character ANYWHERE.
+*   Regex Syntax: https://docs.rs/regex/1.1.2/regex/#syntax
 
 Please note that the nitty-gritty of supported syntax may change in the future.
 There are still some todos noted in the source code.

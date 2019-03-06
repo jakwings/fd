@@ -4,12 +4,14 @@ use super::regex::bytes::RegexBuilder;
 use super::internal::{error, AppOptions};
 
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
+// https://docs.rs/globset/latest/globset/#syntax
 pub struct GlobBuilder {}
 
 impl GlobBuilder {
     pub fn new(pattern: &str, config: &AppOptions) -> RegexBuilder {
         match globset::GlobBuilder::new(pattern)
             .unicode(config.unicode)
+            .backslash_escape(true)
             .case_insensitive(false)
             .literal_separator(config.match_full_path)
             .build()

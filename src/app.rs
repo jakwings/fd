@@ -23,8 +23,6 @@ macro_rules! doc {
     };
 }
 
-// TODO upstream: Only show advanced options with the *long* flag --help.
-//                https://github.com/kbknapp/clap-rs/issues/1064
 pub fn build() -> App<'static, 'static> {
     let help = get_help();
     let arg = |name| {

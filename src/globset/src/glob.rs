@@ -189,6 +189,8 @@ pub struct GlobBuilder<'a> {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct GlobOptions {
+    /// Whether to enable Unicode support.
+    unicode: bool,
     /// Whether to match case insensitively.
     case_insensitive: bool,
     /// Whether to require a literal separator to match a separator in a file
@@ -202,6 +204,7 @@ struct GlobOptions {
 impl GlobOptions {
     fn default() -> GlobOptions {
         GlobOptions {
+            unicode: false,
             case_insensitive: false,
             literal_separator: false,
             backslash_escape: !is_separator('\\'),
@@ -599,6 +602,14 @@ impl<'a> GlobBuilder<'a> {
         }
     }
 
+    /// Toggle whether the pattern matches Unicode scalar values.
+    ///
+    /// This is disabled by default.
+    pub fn unicode(&mut self, yes: bool) -> &mut GlobBuilder<'a> {
+        self.opts.unicode = yes;
+        self
+    }
+
     /// Toggle whether the pattern matches case insensitively or not.
     ///
     /// This is disabled by default.
@@ -633,7 +644,9 @@ impl Tokens {
     /// glob pattern and the options given.
     fn to_regex_with(&self, options: &GlobOptions) -> String {
         let mut re = String::new();
-        re.push_str("(?-u)");
+        if !options.unicode {
+            re.push_str("(?-u)");
+        }
         if options.case_insensitive {
             re.push_str("(?i)");
         }
@@ -659,7 +672,11 @@ impl Tokens {
         for tok in tokens {
             match *tok {
                 Token::Literal(c) => {
-                    re.push_str(&char_to_escaped_literal(c));
+                    if !options.unicode {
+                        re.push_str(&char_to_escaped_literal(c));
+                    } else {
+                        re.push_str(&regex::escape(&c.to_string()));
+                    }
                 }
                 Token::Any => {
                     if options.literal_separator {
@@ -690,13 +707,23 @@ impl Tokens {
                         re.push('^');
                     }
                     for r in ranges {
-                        if r.0 == r.1 {
-                            // Not strictly necessary, but nicer to look at.
-                            re.push_str(&char_to_escaped_literal(r.0));
+                        if !options.unicode {
+                            if r.0 == r.1 {
+                                // Not strictly necessary, but nicer to look at.
+                                re.push_str(&char_to_escaped_literal(r.0));
+                            } else {
+                                re.push_str(&char_to_escaped_literal(r.0));
+                                re.push('-');
+                                re.push_str(&char_to_escaped_literal(r.1));
+                            }
                         } else {
-                            re.push_str(&char_to_escaped_literal(r.0));
-                            re.push('-');
-                            re.push_str(&char_to_escaped_literal(r.1));
+                            if r.0 == r.1 {
+                                re.push_str(&regex::escape(&r.0.to_string()));
+                            } else {
+                                re.push_str(&regex::escape(&r.0.to_string()));
+                                re.push('-');
+                                re.push_str(&regex::escape(&r.1.to_string()));
+                            }
                         }
                     }
                     re.push(']');
@@ -822,16 +849,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_backslash(&mut self) -> Result<(), Error> {
+        match self.apply_backslash() {
+            None => Err(self.error(ErrorKind::DanglingEscape)),
+            Some(c) => self.push_token(Token::Literal(c)),
+        }
+    }
+
+    fn apply_backslash(&mut self) -> Option<char> {
         if self.opts.backslash_escape {
-            match self.bump() {
-                None => Err(self.error(ErrorKind::DanglingEscape)),
-                Some(c) => self.push_token(Token::Literal(c)),
-            }
+            self.bump()
         } else if is_separator('\\') {
             // Normalize all patterns to use / as a separator.
-            self.push_token(Token::Literal('/'))
+            Some('/')
         } else {
-            self.push_token(Token::Literal('\\'))
+            Some('\\')
         }
     }
 
@@ -956,6 +987,14 @@ impl<'a> Parser<'a> {
                     }
                 }
                 c => {
+                    let c = if c == '\\' {
+                        match self.apply_backslash() {
+                            None => return Err(self.error(ErrorKind::DanglingEscape)),
+                            Some(c) => c,
+                        }
+                    } else {
+                        c
+                    };
                     if in_range {
                         // invariant: in_range is only set when there is
                         // already at least one character seen.
@@ -1012,6 +1051,7 @@ mod tests {
 
     #[derive(Clone, Copy, Debug, Default)]
     struct Options {
+        unicode: Option<bool>,
         casei: Option<bool>,
         litsep: Option<bool>,
         bsesc: Option<bool>,
@@ -1045,6 +1085,9 @@ mod tests {
             #[test]
             fn $name() {
                 let mut builder = GlobBuilder::new($pat);
+                if let Some(unicode) = $options.unicode {
+                    builder.unicode(unicode);
+                }
                 if let Some(casei) = $options.casei {
                     builder.case_insensitive(casei);
                 }
@@ -1055,7 +1098,11 @@ mod tests {
                     builder.backslash_escape(bsesc);
                 }
                 let pat = builder.build().unwrap();
-                assert_eq!(format!("(?-u){}", $re), pat.regex());
+                if !$options.unicode.unwrap_or(false) {
+                    assert_eq!(format!("(?-u){}", $re), pat.regex());
+                } else {
+                    assert_eq!($re, pat.regex());
+                }
             }
         };
     }
@@ -1068,6 +1115,9 @@ mod tests {
             #[test]
             fn $name() {
                 let mut builder = GlobBuilder::new($pat);
+                if let Some(unicode) = $options.unicode {
+                    builder.unicode(unicode);
+                }
                 if let Some(casei) = $options.casei {
                     builder.case_insensitive(casei);
                 }
@@ -1096,6 +1146,9 @@ mod tests {
             #[test]
             fn $name() {
                 let mut builder = GlobBuilder::new($pat);
+                if let Some(unicode) = $options.unicode {
+                    builder.unicode(unicode);
+                }
                 if let Some(casei) = $options.casei {
                     builder.case_insensitive(casei);
                 }
@@ -1173,6 +1226,11 @@ mod tests {
     syntax!(cls19, "[!a-z0-9]", vec![rclassn(&[('a', 'z'), ('0', '9')])]);
     syntax!(cls20, "[^a]", vec![classn('a', 'a')]);
     syntax!(cls21, "[^a-z]", vec![classn('a', 'z')]);
+    syntax!(cls_bsesc_1, r"\\", vec![Literal('\\')]);
+    syntax!(cls_bsesc_2, r"[\\]", vec![class('\\', '\\')]);
+    syntax!(cls_bsesc_3, r"[\-]", vec![class('-', '-')]);
+    syntax!(cls_unicode_1, "☃", vec![Literal('☃')]);
+    syntax!(cls_unicode_2, "[☃]", vec![class('☃', '☃')]);
 
     syntaxerr!(err_unclosed1, "[", ErrorKind::UnclosedClass);
     syntaxerr!(err_unclosed2, "[]", ErrorKind::UnclosedClass);
@@ -1180,27 +1238,55 @@ mod tests {
     syntaxerr!(err_unclosed4, "[!]", ErrorKind::UnclosedClass);
     syntaxerr!(err_range1, "[z-a]", ErrorKind::InvalidRange('z', 'a'));
     syntaxerr!(err_range2, "[z--]", ErrorKind::InvalidRange('z', '-'));
+    syntaxerr!(err_bsesc1, r"\", ErrorKind::DanglingEscape);
+    syntaxerr!(err_bsesc2, r"[\]", ErrorKind::UnclosedClass);
 
     const CASEI: Options = Options {
+        unicode: None,
         casei: Some(true),
         litsep: None,
         bsesc: None,
     };
     const SLASHLIT: Options = Options {
+        unicode: None,
         casei: None,
         litsep: Some(true),
         bsesc: None,
     };
     const NOBSESC: Options = Options {
+        unicode: None,
         casei: None,
         litsep: None,
         bsesc: Some(false),
     };
     const BSESC: Options = Options {
+        unicode: None,
         casei: None,
         litsep: None,
         bsesc: Some(true),
     };
+    const UNICODE: Options = Options {
+        unicode: Some(true),
+        casei: None,
+        litsep: None,
+        bsesc: None,
+    };
+
+    toregex!(re_bsesc1, r"\\", r"^\\$", BSESC);
+    toregex!(re_bsesc2, r"[\\]", r"^[\\]$", BSESC);
+    toregex!(re_bsesc3, r"[\-]", r"^[\-]$", BSESC);
+    toregex!(re_unicode1, "☃", "^☃$", UNICODE);
+    toregex!(re_unicode2, "[☃]", "^[☃]$", UNICODE);
+    matches!(match_bsesc1, r"\\", r"\", BSESC);
+    matches!(match_bsesc2, r"[\\]", r"\", BSESC);
+    matches!(match_bsesc3, r"[\-]", r"-", BSESC);
+    matches!(match_bsesc4, r"{\\}", r"\", BSESC);
+    matches!(match_bsesc5, r"{\,}", r",", BSESC);
+    matches!(match_bsesc6, r"{\{}", r"{", BSESC);
+    matches!(match_bsesc7, r"{\}}", r"}", BSESC);
+    matches!(match_unicode1, "☃", "☃", UNICODE);
+    matches!(match_unicode2, "[☃]", "☃", UNICODE);
+    matches!(match_unicode3, "^[☃]$", "^☃$", UNICODE);
 
     toregex!(re_casei, "a", "(?i)^a$", &CASEI);
 
@@ -1393,6 +1479,9 @@ mod tests {
             #[test]
             fn $name() {
                 let mut builder = GlobBuilder::new($pat);
+                if let Some(unicode) = $options.unicode {
+                    builder.unicode(unicode);
+                }
                 if let Some(casei) = $options.casei {
                     builder.case_insensitive(casei);
                 }

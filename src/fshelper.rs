@@ -15,14 +15,17 @@ lazy_static! {
             env::var_os("PWD").map_or(PathBuf::new(), |path| {
                 let pwd = PathBuf::from(path);
 
-                if is_same_file(&cwd, &pwd).unwrap_or(false) {
+                if pwd.is_absolute() && is_same_file(&cwd, &pwd).unwrap_or(false) {
                     pwd
-                } else {
+                } else if cwd.is_absolute() {
                     cwd
+                } else {
+                    PathBuf::new()
                 }
             })
         }).unwrap()
     };
+    static ref HAS_PWD: bool = !(*PWD).as_os_str().is_empty();
 }
 
 pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
@@ -36,12 +39,12 @@ pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
     } else {
         let path = path.strip_prefix(".").unwrap_or(path);
 
-        if !(*PWD).as_os_str().is_empty() {
+        if *HAS_PWD {
             Ok((*PWD).join(path))
         } else {
             Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Uninitialized PWD found",
+                "could not resolve relative path into absolute path",
             ))
         }
     }

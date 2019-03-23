@@ -67,8 +67,6 @@ fn spawn_receiver_thread(
     quitting: Arc<AtomicBool>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let mut rx_counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
-
         // This will be set to `Some` if the `--exec` argument was supplied.
         if let Some(ref cmd) = config.command {
             // Broadcast the stdin input to all child processes.
@@ -77,14 +75,15 @@ fn spawn_receiver_thread(
                 let fdin = stdin.as_raw_fd();
                 let mut lock = stdin.lock();
                 let mut bytes = Vec::new();
+                let mut counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
                 // Do not allow blocking I/O to delay the shutdown of this program.
                 // e.g. when waiting for user input.
-                let aborted = match exec::select_read_to_end(&quitting, fdin, &mut lock, &mut bytes)
-                {
-                    Ok(None) => true,
-                    Ok(Some(_size)) => false,
-                    Err(err) => error(&err.to_string()),
-                };
+                let aborted =
+                    match exec::select_read_to_end(&mut counter, fdin, &mut lock, &mut bytes) {
+                        Ok(None) => true,
+                        Ok(Some(_size)) => false,
+                        Err(err) => error(&err.to_string()),
+                    };
 
                 drop(lock);
 
@@ -108,13 +107,15 @@ fn spawn_receiver_thread(
             let rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(config.threads);
 
+            // TODO: enable sorting for preprocessing?
             for _ in 0..config.threads {
                 let rx = Arc::clone(&rx);
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
                 let quitting = Arc::clone(&quitting);
+                let mut counter = Counter::new(MAX_CNT / config.threads, Some(quitting));
                 let handle = thread::spawn(move || {
-                    exec::schedule(quitting, rx, cmd, input, no_stdin, cache_output)
+                    exec::schedule(counter, rx, cmd, input, no_stdin, cache_output)
                 });
 
                 handles.push(handle);
@@ -143,6 +144,8 @@ fn spawn_receiver_thread(
             let mut counter = Counter::new(MAX_CNT, None);
             let start = time::Instant::now();
             let duration = time::Duration::from_millis(max_buffer_time);
+            let quitting = Arc::clone(&quitting);
+            let mut rx_counter = Counter::new(MAX_CNT, Some(quitting));
 
             for value in rx {
                 if rx_counter.inc(1) {
@@ -214,7 +217,8 @@ fn spawn_sender_threads(
         let tx = tx.clone();
         let config = Arc::clone(&config);
         let pattern = Arc::clone(&pattern);
-        let mut tx_counter = Counter::new(MAX_CNT / config.threads, Some(Arc::clone(&quitting)));
+        let quitting = Arc::clone(&quitting);
+        let mut tx_counter = Counter::new(MAX_CNT, Some(quitting));
 
         Box::new(move |entry_o| {
             if tx_counter.inc(1) {

@@ -2,17 +2,17 @@ use std::io::{self, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
+use super::super::counter::Counter;
 use super::{select_write_all, warn, ExecTemplate};
 
 // Each received input will generate a command with the supplied command template.
 // Then execute the generated command and wait for the child process.
 // Resource would get exhausted if we keep spawning new processes without waiting for the old ones.
 pub fn schedule(
-    quitting: Arc<AtomicBool>,
+    mut counter: Counter,
     receiver: Arc<Mutex<Receiver<PathBuf>>>,
     template: Arc<ExecTemplate>,
     cached_input: Arc<Option<Vec<u8>>>,
@@ -20,7 +20,7 @@ pub fn schedule(
     cache_output: bool,
 ) {
     loop {
-        if quitting.load(atomic::Ordering::Relaxed) {
+        if counter.inc(1) {
             return;
         }
 
@@ -54,7 +54,7 @@ pub fn schedule(
                 if let Some(mut stdin) = child.stdin.take() {
                     let fdin = stdin.as_raw_fd();
 
-                    if select_write_all(&quitting, fdin, &mut stdin, bytes)?.is_none() {
+                    if select_write_all(&mut counter, fdin, &mut stdin, bytes)?.is_none() {
                         child.kill()?;
                     }
                 } else {

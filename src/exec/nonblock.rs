@@ -1,7 +1,5 @@
 use std::io::{self, Read, Write};
 use std::os::unix::io::RawFd;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 use std::thread;
 use std::time;
 
@@ -14,10 +12,9 @@ use super::super::counter::Counter;
 
 const BUF_SIZE: usize = 512;
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds
-const MAX_CNT: usize = 500;
 
 pub fn select_read_to_end<R: Read>(
-    atom: &Arc<AtomicBool>,
+    counter: &mut Counter,
     fd: RawFd,
     reader: &mut R,
     content: &mut Vec<u8>,
@@ -25,7 +22,6 @@ pub fn select_read_to_end<R: Read>(
     let interval = time::Duration::new(0, INTERVAL);
     let mut total = 0;
     let mut buffer = [0; BUF_SIZE];
-    let mut counter = Counter::new(MAX_CNT, Some(Arc::clone(atom)));
     let mut fdset = select::FdSet::new();
 
     loop {
@@ -77,7 +73,7 @@ pub fn select_read_to_end<R: Read>(
 }
 
 pub fn select_write_all<W: Write>(
-    atom: &Arc<AtomicBool>,
+    counter: &mut Counter,
     fd: RawFd,
     writer: &mut W,
     content: &Vec<u8>,
@@ -85,7 +81,6 @@ pub fn select_write_all<W: Write>(
     let interval = time::Duration::new(0, INTERVAL);
     let mut total = 0;
     let length = content.len();
-    let mut counter = Counter::new(MAX_CNT, Some(Arc::clone(atom)));
     let mut fdset = select::FdSet::new();
 
     loop {

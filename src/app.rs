@@ -267,6 +267,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "sort-path",
         "Sort the results by pathname.",
         "The search results will be sorted by pathname before output. \
+         This option will also force --exec to use a single thread for processing. \
          Sort by lexicographically comparing the byte strings of path components \
          (not comparing the whole pathnames directly)."
     );

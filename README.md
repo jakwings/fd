@@ -99,9 +99,10 @@ OPTIONS:
             Relative paths for output are transformed into absolute paths.
 
     -S, --sort-path
-            The search results will be sorted by pathname before output. Sort by
-            lexicographically comparing the byte strings of path components (not
-            comparing the whole pathnames directly).
+            The search results will be sorted by pathname before output. This
+            option will also force --exec to use a single thread for processing.
+            Sort by lexicographically comparing the byte strings of path
+            components (not comparing the whole pathnames directly).
 
     -a, --all
             All files and directories are searched. By default, files and

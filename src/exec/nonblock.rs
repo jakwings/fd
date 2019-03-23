@@ -1,6 +1,6 @@
 use std::io::{self, Read, Write};
 use std::os::unix::io::RawFd;
-use std::sync::atomic::{self, AtomicBool};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread;
 use std::time;
@@ -10,17 +10,11 @@ use super::nix::sys::select;
 use super::nix::sys::time::{TimeVal, TimeValLike};
 use super::nix::Error;
 
+use super::super::counter::Counter;
+
 const BUF_SIZE: usize = 512;
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds
-const MAX_CNT: u32 = 500;
-
-fn loop_counter(counter: &mut u32) {
-    *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
-}
-
-fn load_bool(atom: &Arc<AtomicBool>) -> bool {
-    atom.load(atomic::Ordering::Relaxed)
-}
+const MAX_CNT: usize = 500;
 
 pub fn select_read_to_end<R: Read>(
     atom: &Arc<AtomicBool>,
@@ -31,14 +25,12 @@ pub fn select_read_to_end<R: Read>(
     let interval = time::Duration::new(0, INTERVAL);
     let mut total = 0;
     let mut buffer = [0; BUF_SIZE];
-    let mut counter = 0;
+    let mut counter = Counter::new(MAX_CNT, Some(Arc::clone(atom)));
     let mut fdset = select::FdSet::new();
 
     loop {
-        if counter >= MAX_CNT && load_bool(&atom) {
+        if counter.inc(1) {
             return Ok(None);
-        } else {
-            loop_counter(&mut counter);
         }
 
         let mut waittime = TimeVal::zero();
@@ -93,14 +85,12 @@ pub fn select_write_all<W: Write>(
     let interval = time::Duration::new(0, INTERVAL);
     let mut total = 0;
     let length = content.len();
-    let mut counter = 0;
+    let mut counter = Counter::new(MAX_CNT, Some(Arc::clone(atom)));
     let mut fdset = select::FdSet::new();
 
     loop {
-        if counter >= MAX_CNT && load_bool(&atom) {
+        if counter.inc(1) {
             return Ok(None);
-        } else {
-            loop_counter(&mut counter);
         }
 
         let range = total..(BUF_SIZE + total).min(length);

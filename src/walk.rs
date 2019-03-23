@@ -3,10 +3,10 @@ use std::io;
 use std::option::Option;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::atomic::{self, AtomicBool};
-use std::sync::mpsc::channel;
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
@@ -17,10 +17,13 @@ use super::ignore::{self, WalkBuilder, WalkState};
 use super::nix::sys::signal::Signal::SIGINT;
 use super::regex::bytes::Regex;
 
+use super::counter::Counter;
 use super::exec;
 use super::fshelper::{is_executable, to_absolute_path};
 use super::internal::{error, warn, AppOptions};
 use super::output;
+
+const MAX_CNT: usize = 500;
 
 #[derive(Clone, Copy, PartialEq)]
 enum BufferTime {
@@ -48,27 +51,8 @@ struct DirEntry<'a> {
     file_type: Option<EntryFileType>,
 }
 
-const MAX_CNT: u32 = 500;
-
-fn loop_counter(counter: &mut u32) {
-    *counter = if *counter < MAX_CNT { *counter + 1 } else { 1 };
-}
-
-fn load_bool(atom: &Arc<AtomicBool>) -> bool {
-    atom.load(atomic::Ordering::Relaxed)
-}
-
-fn has_sigint(quitting: &Arc<AtomicBool>, counter: &mut u32) -> bool {
-    if *counter >= MAX_CNT && load_bool(quitting) {
-        true
-    } else {
-        loop_counter(counter);
-        false
-    }
-}
-
 fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
-    if load_bool(quitting) {
+    if quitting.load(atomic::Ordering::Relaxed) {
         // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
         // XXX: https://github.com/rust-lang/rust/issues/33417
         let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
@@ -77,46 +61,30 @@ fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
     }
 }
 
-// Recursively scan the given search path for files/pathnames matching the pattern.
-//
-// If the `--exec` argument was supplied, this will create a thread pool for executing
-// jobs in parallel from a given command line and the discovered paths. Otherwise, each
-// path will simply be written to standard output.
-pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
-    let (tx, rx) = channel();
-    let threads = config.threads;
+fn spawn_receiver_thread(
+    rx: mpsc::Receiver<PathBuf>,
+    config: Arc<AppOptions>,
+    quitting: Arc<AtomicBool>,
+) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let mut rx_counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
 
-    // A signal to tell the colorizer or the command processor to exit gracefully.
-    let quitting = Arc::new(AtomicBool::new(false));
-    {
-        let atom = Arc::clone(&quitting);
-        ctrlc::set_handler(move || {
-            atom.store(true, atomic::Ordering::Relaxed);
-        })
-        .expect("[Error] could not set Ctrl-C handler");
-    }
-
-    // Spawn the thread that receives all results through the channel.
-    let rx_config = Arc::clone(&config);
-    let rx_quitting = Arc::clone(&quitting);
-    let mut rx_counter = 0;
-    let receiver_thread = thread::spawn(move || {
         // This will be set to `Some` if the `--exec` argument was supplied.
-        if let Some(ref cmd) = rx_config.command {
+        if let Some(ref cmd) = config.command {
             // Broadcast the stdin input to all child processes.
-            let cached_input = if rx_config.multiplex {
+            let cached_input = if config.multiplex {
                 let stdin = io::stdin();
                 let fdin = stdin.as_raw_fd();
                 let mut lock = stdin.lock();
                 let mut bytes = Vec::new();
                 // Do not allow blocking I/O to delay the shutdown of this program.
                 // e.g. when waiting for user input.
-                let aborted =
-                    match exec::select_read_to_end(&rx_quitting, fdin, &mut lock, &mut bytes) {
-                        Ok(None) => true,
-                        Ok(Some(_size)) => false,
-                        Err(err) => error(&err.to_string()),
-                    };
+                let aborted = match exec::select_read_to_end(&quitting, fdin, &mut lock, &mut bytes)
+                {
+                    Ok(None) => true,
+                    Ok(Some(_size)) => false,
+                    Err(err) => error(&err.to_string()),
+                };
 
                 drop(lock);
 
@@ -133,20 +101,20 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
             // Enable caching for broadcast, as interactive input may not satisfy all commands.
             let input = Arc::new(cached_input);
             // It is unsafe to interact with mixed output from different commands.
-            let no_stdin = threads > 1 && atty::is(atty::Stream::Stdin);
+            let no_stdin = config.threads > 1 && atty::is(atty::Stream::Stdin);
             // Reorder the output only when necessary.
-            let cache_output = threads > 1;
+            let cache_output = config.threads > 1;
 
-            let shared_rx = Arc::new(Mutex::new(rx));
-            let mut handles = Vec::with_capacity(threads);
+            let rx = Arc::new(Mutex::new(rx));
+            let mut handles = Vec::with_capacity(config.threads);
 
-            for _ in 0..threads {
-                let rx = Arc::clone(&shared_rx);
+            for _ in 0..config.threads {
+                let rx = Arc::clone(&rx);
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
-                let abort = Arc::clone(&rx_quitting);
+                let quitting = Arc::clone(&quitting);
                 let handle = thread::spawn(move || {
-                    exec::schedule(abort, rx, cmd, input, no_stdin, cache_output)
+                    exec::schedule(quitting, rx, cmd, input, no_stdin, cache_output)
                 });
 
                 handles.push(handle);
@@ -158,13 +126,13 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
             }
         } else {
             let max_buffer_time = if atty::is(atty::Stream::Stdout) {
-                rx_config.max_buffer_time.unwrap_or(100)
+                config.max_buffer_time.unwrap_or(100)
             } else {
                 0
             };
 
             let mut buffer = Vec::new();
-            let mut mode = if rx_config.sort_path {
+            let mut mode = if config.sort_path {
                 ReceiverMode::Buffering(BufferTime::Eternity)
             } else if max_buffer_time > 0 {
                 ReceiverMode::Buffering(BufferTime::Duration)
@@ -172,12 +140,12 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 ReceiverMode::Streaming
             };
 
-            let mut count = 0;
+            let mut counter = Counter::new(MAX_CNT, None);
             let start = time::Instant::now();
             let duration = time::Duration::from_millis(max_buffer_time);
 
             for value in rx {
-                if has_sigint(&rx_quitting, &mut rx_counter) {
+                if rx_counter.inc(1) {
                     return;
                 }
                 match mode {
@@ -185,15 +153,13 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         BufferTime::Duration => {
                             buffer.push(value);
 
-                            if count >= MAX_CNT && time::Instant::now() - start > duration {
+                            if counter.inc(1) && time::Instant::now() - start > duration {
                                 for v in &buffer {
-                                    output::print_entry(&v, &rx_config);
+                                    output::print_entry(&v, &config);
                                 }
                                 buffer.clear();
 
                                 mode = ReceiverMode::Streaming;
-                            } else {
-                                loop_counter(&mut count);
                             }
                         }
                         BufferTime::Eternity => {
@@ -201,7 +167,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                         }
                     },
                     ReceiverMode::Streaming => {
-                        output::print_entry(&value, &rx_config);
+                        output::print_entry(&value, &config);
                     }
                 }
             }
@@ -213,17 +179,23 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
                 buffer.sort();
 
                 for value in buffer {
-                    if has_sigint(&rx_quitting, &mut rx_counter) {
+                    if rx_counter.inc(1) {
                         return;
                     }
-                    output::print_entry(&value, &rx_config);
+                    output::print_entry(&value, &config);
                 }
             }
         }
-    });
+    })
+}
 
-    let tx_quitting = Arc::clone(&quitting);
-    let mut tx_counter = 0;
+fn spawn_sender_threads(
+    tx: mpsc::Sender<PathBuf>,
+    root: &Path,
+    pattern: Arc<Option<Regex>>,
+    config: Arc<AppOptions>,
+    quitting: Arc<AtomicBool>,
+) {
     let walker = WalkBuilder::new(root)
         .hidden(!config.dot_files)
         .ignore(config.read_ignore)
@@ -234,7 +206,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         .same_file_system(config.same_file_system)
         .follow_links(config.follow_symlink)
         .max_depth(config.max_depth)
-        .threads(threads)
+        .threads(config.threads)
         .build_parallel();
 
     // Spawn the sender threads.
@@ -242,10 +214,10 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         let tx = tx.clone();
         let config = Arc::clone(&config);
         let pattern = Arc::clone(&pattern);
+        let mut tx_counter = Counter::new(MAX_CNT / config.threads, Some(Arc::clone(&quitting)));
 
-        let quitting = Arc::clone(&tx_quitting);
         Box::new(move |entry_o| {
-            if has_sigint(&quitting, &mut tx_counter) {
+            if tx_counter.inc(1) {
                 return WalkState::Quit;
             }
 
@@ -351,6 +323,36 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
             WalkState::Continue
         })
     });
+}
+
+// Recursively scan the given search path for files/pathnames matching the pattern.
+//
+// If the `--exec` argument was supplied, this will create a thread pool for executing
+// jobs in parallel from a given command line and the discovered paths. Otherwise, each
+// path will simply be written to standard output.
+pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
+    let (tx, rx) = mpsc::channel();
+
+    // A signal to tell the colorizer or the command processor to exit gracefully.
+    let quitting = Arc::new(AtomicBool::new(false));
+    {
+        let atom = Arc::clone(&quitting);
+        ctrlc::set_handler(move || {
+            atom.store(true, atomic::Ordering::Relaxed);
+        })
+        .expect("[Error] could not set Ctrl-C handler");
+    }
+
+    // Spawn the thread that receives all results through the channel.
+    let receiver_thread = spawn_receiver_thread(rx, Arc::clone(&config), Arc::clone(&quitting));
+
+    spawn_sender_threads(
+        tx.clone(),
+        root,
+        pattern,
+        Arc::clone(&config),
+        Arc::clone(&quitting),
+    );
 
     // Drop the initial sender. If we don't do this, the receiver will block even
     // if all threads have finished, since there is still one sender around.

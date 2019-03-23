@@ -12,6 +12,7 @@ extern crate regex;
 extern crate same_file;
 
 mod app;
+mod counter;
 mod exec;
 mod fshelper;
 mod glob;

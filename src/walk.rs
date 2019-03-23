@@ -67,6 +67,8 @@ fn spawn_receiver_thread(
     quitting: Arc<AtomicBool>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
+        let mut rx_counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
+
         // This will be set to `Some` if the `--exec` argument was supplied.
         if let Some(ref cmd) = config.command {
             // Broadcast the stdin input to all child processes.
@@ -75,11 +77,10 @@ fn spawn_receiver_thread(
                 let fdin = stdin.as_raw_fd();
                 let mut lock = stdin.lock();
                 let mut bytes = Vec::new();
-                let mut counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
                 // Do not allow blocking I/O to delay the shutdown of this program.
                 // e.g. when waiting for user input.
                 let aborted =
-                    match exec::select_read_to_end(&mut counter, fdin, &mut lock, &mut bytes) {
+                    match exec::select_read_to_end(&mut rx_counter, fdin, &mut lock, &mut bytes) {
                         Ok(None) => true,
                         Ok(Some(_size)) => false,
                         Err(err) => error(&err.to_string()),
@@ -107,7 +108,6 @@ fn spawn_receiver_thread(
             let rx = Arc::new(Mutex::new(rx));
             let mut handles = Vec::with_capacity(config.threads);
 
-            // TODO: enable sorting for preprocessing?
             for _ in 0..config.threads {
                 let rx = Arc::clone(&rx);
                 let cmd = Arc::clone(&cmd);
@@ -126,79 +126,92 @@ fn spawn_receiver_thread(
                 h.join().expect("[Error] unable to process search results");
             }
         } else {
-            let max_buffer_time = if atty::is(atty::Stream::Stdout) {
-                config.max_buffer_time.unwrap_or(100)
-            } else {
-                0
-            };
-
-            let mut buffer = Vec::new();
-            let mut mode = if config.sort_path {
-                ReceiverMode::Buffering(BufferTime::Eternity)
-            } else if max_buffer_time > 0 {
-                ReceiverMode::Buffering(BufferTime::Duration)
-            } else {
-                ReceiverMode::Streaming
-            };
-
-            let mut counter = Counter::new(MAX_CNT, None);
-            let start = time::Instant::now();
-            let duration = time::Duration::from_millis(max_buffer_time);
-            let quitting = Arc::clone(&quitting);
-            let mut rx_counter = Counter::new(MAX_CNT, Some(quitting));
-
             for value in rx {
                 if rx_counter.inc(1) {
                     return;
                 }
-                match mode {
-                    ReceiverMode::Buffering(buf_time) => match buf_time {
-                        BufferTime::Duration => {
-                            buffer.push(value);
-
-                            if counter.inc(1) && time::Instant::now() - start > duration {
-                                for v in &buffer {
-                                    output::print_entry(&v, &config);
-                                }
-                                buffer.clear();
-
-                                mode = ReceiverMode::Streaming;
-                            }
-                        }
-                        BufferTime::Eternity => {
-                            buffer.push(value);
-                        }
-                    },
-                    ReceiverMode::Streaming => {
-                        output::print_entry(&value, &config);
-                    }
-                }
-            }
-
-            if !buffer.is_empty() {
-                // Stable sort is fast enough for nearly sorted items,
-                // although it uses 50% more memory than unstable sort.
-                // Would parallel sort really help much? Skeptical.
-                buffer.sort();
-
-                for value in buffer {
-                    if rx_counter.inc(1) {
-                        return;
-                    }
-                    output::print_entry(&value, &config);
-                }
+                output::print_entry(&value, &config);
             }
         }
     })
 }
 
-fn spawn_sender_threads(
+fn spawn_sorter_thread(
+    xtx: mpsc::Sender<PathBuf>,
+    rx: mpsc::Receiver<PathBuf>,
+    config: Arc<AppOptions>,
+) -> thread::JoinHandle<()> {
+    let tx = xtx.clone();
+    let sorter_thread = thread::spawn(move || {
+        let max_buffer_time = if atty::is(atty::Stream::Stdout) {
+            config.max_buffer_time.unwrap_or(100)
+        } else {
+            0
+        };
+
+        let mut buffer = Vec::new();
+        let mut mode = if config.sort_path {
+            ReceiverMode::Buffering(BufferTime::Eternity)
+        } else if max_buffer_time > 0 {
+            ReceiverMode::Buffering(BufferTime::Duration)
+        } else {
+            ReceiverMode::Streaming
+        };
+
+        let mut counter = Counter::new(MAX_CNT, None);
+        let start = time::Instant::now();
+        let duration = time::Duration::from_millis(max_buffer_time);
+
+        for value in rx {
+            match mode {
+                ReceiverMode::Buffering(buf_time) => match buf_time {
+                    BufferTime::Duration => {
+                        buffer.push(value);
+
+                        if counter.inc(1) && time::Instant::now() - start > duration {
+                            for v in buffer.drain(0..) {
+                                tx.send(v).unwrap();
+                            }
+                            mode = ReceiverMode::Streaming;
+                        }
+                    }
+                    BufferTime::Eternity => {
+                        buffer.push(value);
+                    }
+                },
+                ReceiverMode::Streaming => {
+                    tx.send(value).unwrap();
+                }
+            }
+        }
+
+        if !buffer.is_empty() {
+            // Stable sort is fast enough for nearly sorted items,
+            // although it uses 50% more memory than unstable sort.
+            // Would parallel sort really help much? Skeptical.
+            buffer.sort();
+
+            for value in buffer {
+                tx.send(value).unwrap();
+            }
+        }
+    });
+
+    drop(xtx);
+
+    sorter_thread
+}
+
+fn spawn_sender_thread(
     tx: mpsc::Sender<PathBuf>,
     root: &Path,
     pattern: Arc<Option<Regex>>,
     config: Arc<AppOptions>,
     quitting: Arc<AtomicBool>,
-) {
+) -> thread::JoinHandle<()> {
+    // middleware for sorting
+    let (xtx, xrx) = mpsc::channel();
+    let sorter_thread = spawn_sorter_thread(tx, xrx, Arc::clone(&config));
     let walker = WalkBuilder::new(root)
         .hidden(!config.dot_files)
         .ignore(config.read_ignore)
@@ -214,7 +227,7 @@ fn spawn_sender_threads(
 
     // Spawn the sender threads.
     walker.run(|| {
-        let tx = tx.clone();
+        let tx = xtx.clone();
         let config = Arc::clone(&config);
         let pattern = Arc::clone(&pattern);
         let quitting = Arc::clone(&quitting);
@@ -305,7 +318,7 @@ fn spawn_sender_threads(
                 if config.match_full_path {
                     if let Ok(path_buf) = to_absolute_path(&entry_path) {
                         if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                            let _ = tx.send(entry_path.to_owned());
+                            tx.send(entry_path.to_owned()).unwrap();
                         }
                     } else {
                         error(&format!(
@@ -316,17 +329,23 @@ fn spawn_sender_threads(
                 } else {
                     if let Some(os_str) = entry_path.file_name() {
                         if pattern.is_match(os_str.as_bytes()) {
-                            let _ = tx.send(entry_path.to_owned());
+                            tx.send(entry_path.to_owned()).unwrap();
                         }
                     }
                 }
             } else {
-                let _ = tx.send(entry_path.to_owned());
+                tx.send(entry_path.to_owned()).unwrap();
             }
 
             WalkState::Continue
         })
     });
+
+    // Drop the sender. If we don't do this, the receiver will block even
+    // if all threads have finished, since there is still one sender around.
+    drop(xtx);
+
+    sorter_thread
 }
 
 // Recursively scan the given search path for files/pathnames matching the pattern.
@@ -350,17 +369,18 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
     // Spawn the thread that receives all results through the channel.
     let receiver_thread = spawn_receiver_thread(rx, Arc::clone(&config), Arc::clone(&quitting));
 
-    spawn_sender_threads(
-        tx.clone(),
+    let sender_thread = spawn_sender_thread(
+        tx,
         root,
         pattern,
         Arc::clone(&config),
         Arc::clone(&quitting),
     );
 
-    // Drop the initial sender. If we don't do this, the receiver will block even
-    // if all threads have finished, since there is still one sender around.
-    drop(tx);
+    // Wait for the sender thread to sort & send all results.
+    sender_thread
+        .join()
+        .expect("[Error] unable to produce search results");
 
     // Wait for the receiver thread to print out all results.
     receiver_thread

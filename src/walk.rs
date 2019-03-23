@@ -97,23 +97,24 @@ fn spawn_receiver_thread(
                 None
             };
 
+            let threads = if !config.sort_path { config.threads } else { 1 };
             let cmd = Arc::new(cmd.clone());
             // Enable caching for broadcast, as interactive input may not satisfy all commands.
             let input = Arc::new(cached_input);
             // It is unsafe to interact with mixed output from different commands.
-            let no_stdin = config.threads > 1 && atty::is(atty::Stream::Stdin);
+            let no_stdin = threads > 1 && atty::is(atty::Stream::Stdin);
             // Reorder the output only when necessary.
-            let cache_output = config.threads > 1;
+            let cache_output = threads > 1;
 
             let rx = Arc::new(Mutex::new(rx));
-            let mut handles = Vec::with_capacity(config.threads);
+            let mut handles = Vec::with_capacity(threads);
 
-            for _ in 0..config.threads {
+            for _ in 0..threads {
                 let rx = Arc::clone(&rx);
                 let cmd = Arc::clone(&cmd);
                 let input = Arc::clone(&input);
                 let quitting = Arc::clone(&quitting);
-                let mut counter = Counter::new(MAX_CNT / config.threads, Some(quitting));
+                let mut counter = Counter::new(MAX_CNT / threads, Some(quitting));
                 let handle = thread::spawn(move || {
                     exec::schedule(counter, rx, cmd, input, no_stdin, cache_output)
                 });
@@ -152,7 +153,7 @@ fn spawn_sorter_thread(
         let mut buffer = Vec::new();
         let mut mode = if config.sort_path {
             ReceiverMode::Buffering(BufferTime::Eternity)
-        } else if max_buffer_time > 0 {
+        } else if max_buffer_time > 0 && (config.command.is_none() || config.threads == 1) {
             ReceiverMode::Buffering(BufferTime::Duration)
         } else {
             ReceiverMode::Streaming

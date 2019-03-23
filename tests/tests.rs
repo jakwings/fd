@@ -795,6 +795,24 @@ fn test_exec() {
         "./α β.",
     );
 
+    env.assert_output(
+        false,
+        &["--threads=4", "--sort-path", "--exec", "printf", "%s\\n"],
+        "./a.foo
+         ./one
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./one.two
+         ./symlink
+         ./symlink2
+         ./α β",
+    );
+
     // TODO: Test isatty(stdin)
     // TODO: Test multiplexer for single-thread and multi-thread execution.
 }

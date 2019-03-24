@@ -125,6 +125,9 @@ OPTIONS:
                      file or f: regular files
                   symlink or l: symbolic links
                executable or x: executable files
+            Executable files are regular files with execute permission bits set
+            or are symlinks pointing to the former, which means they are likely
+            programs that can be loaded and run on the operating system.
 
     -d, --max-depth <number>
             Limit the directory traversal to a given depth.

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use clap::{App, AppSettings, Arg};
+use super::clap::{App, AppSettings, Arg};
 
 struct Help {
     short: &'static str,

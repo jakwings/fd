@@ -306,7 +306,10 @@ fn get_help() -> HashMap<&'static str, Help> {
             "    directory or d: directories\n",
             "         file or f: regular files\n",
             "      symlink or l: symbolic links\n",
-            "   executable or x: executable files"
+            "   executable or x: executable files\n",
+            "Executable files are regular files with execute permission bits set \
+             or are symlinks pointing to the former, which means they are likely \
+             programs that can be loaded and run on the operating system."
         )
     );
 

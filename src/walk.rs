@@ -280,6 +280,7 @@ fn spawn_sender_thread(
 
             if config.file_type != FileType::Any {
                 if let Some(file_type) = entry.file_type {
+                    // only zero or one of is_dir/is_file/is_symlink can be true
                     let to_skip = match config.file_type {
                         FileType::Any => false,
                         FileType::Directory => !file_type.is_dir(),
@@ -288,18 +289,19 @@ fn spawn_sender_thread(
                         FileType::Executable => {
                             // entry_path.metadata() always follows symlinks
                             if let Ok(meta) = entry_path.metadata() {
-                                meta.is_dir() || !is_executable(&meta)
+                                // only accept likely-execve(2)-able files
+                                meta.is_dir()  // this check fails for symlinks
+                                    || !(file_type.is_file() || file_type.is_symlink())
+                                    || !is_executable(&meta)
                             } else {
                                 if !file_type.is_symlink() {
+                                    // permission denied?
                                     warn(&format!(
                                         "could not get metadata of {:?}",
                                         entry_path.as_os_str()
                                     ));
-                                    return WalkState::Continue;
-                                } else {
-                                    // symlinks to non-existent files
-                                    true
-                                }
+                                } // else: symlinks to non-existent files
+                                true
                             }
                         }
                     };

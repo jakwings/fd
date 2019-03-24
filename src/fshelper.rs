@@ -60,6 +60,10 @@ pub fn is_dir(path: &Path) -> bool {
     }
 }
 
+// Only check whether the executable bits are set.
+// (is_dir() || is_file() || is_symlink()) may not be true
+// (is_block_device() || is_char_device() || is_fifo() || is_socket()) may be true
+// It may not be actually executable by execve(2).
 pub fn is_executable(meta: &fs::Metadata) -> bool {
     meta.permissions().mode() & 0o111 != 0
 }

@@ -3,9 +3,10 @@
 //! For more information, see
 //! [ANSI escape code (Wikipedia)](https://en.wikipedia.org/wiki/ANSI_escape_code).
 use std::collections::VecDeque;
+use std::ffi::OsStr;
 
-#[cfg(ansi_term)]
-use ansi_term;
+//#[cfg(ansi_term)]
+extern crate ansi_term;
 
 /// A `Color` can be one of the pre-defined ANSI colors (`Red`, `Green`, ..),
 /// a 8-bit ANSI color (`Fixed(u8)`) or a 24-bit color (`RGB(u8, u8, u8)`).
@@ -25,7 +26,7 @@ pub enum Color {
 
 impl Color {
     /// Convert to a `ansi_term::Color` (if the `ansi_term` feature is enabled).
-    #[cfg(feature = "ansi_term")]
+    //#[cfg(feature = "ansi_term")]
     pub fn to_ansi_term_color(&self) -> ansi_term::Color {
         match self {
             Color::RGB(r, g, b) => ansi_term::Color::RGB(*r, *g, *b),
@@ -96,7 +97,10 @@ pub struct Style {
 
 impl Style {
     /// Parse ANSI escape sequences like `38;2;255;0;100;1;4` (pink, bold, underlined).
-    pub fn from_ansi_sequence(code: &str) -> Option<Style> {
+    pub fn from_ansi_sequence<T: AsRef<OsStr>>(input: T) -> Option<Style> {
+        // TODO: check character escape sequences and invalid chars
+        let code = input.as_ref().to_str().unwrap_or("");
+
         if code.is_empty() || code == "0" || code == "00" {
             return None;
         }
@@ -176,7 +180,7 @@ impl Style {
     }
 
     /// Convert to a `ansi_term::Style` (if the `ansi_term` feature is enabled).
-    #[cfg(feature = "ansi_term")]
+    //#[cfg(feature = "ansi_term")]
     pub fn to_ansi_term_style(&self) -> ansi_term::Style {
         let mut ansi_style = ansi_term::Style::default();
 

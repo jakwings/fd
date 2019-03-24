@@ -19,10 +19,11 @@ pub mod style;
 
 use std::collections::HashMap;
 use std::env;
-use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
-pub use crate::style::{Color, FontStyle, Style};
+use crate::foss::*;
+
+pub use self::style::{Color, FontStyle, Style};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Indicator {
@@ -100,38 +101,36 @@ pub enum Indicator {
 }
 
 impl Indicator {
-    pub fn from(indicator: &str) -> Option<Indicator> {
-        match indicator {
-            "no" => Some(Indicator::Normal),
-            "fi" => Some(Indicator::RegularFile),
-            "di" => Some(Indicator::Directory),
-            "ln" => Some(Indicator::SymbolicLink),
-            "pi" => Some(Indicator::FIFO),
-            "so" => Some(Indicator::Socket),
-            "do" => Some(Indicator::Door),
-            "bd" => Some(Indicator::BlockDevice),
-            "cd" => Some(Indicator::CharacterDevice),
-            "or" => Some(Indicator::OrphanedSymbolicLink),
-            "su" => Some(Indicator::Setuid),
-            "sg" => Some(Indicator::Setgid),
-            "st" => Some(Indicator::Sticky),
-            "ow" => Some(Indicator::OtherWritable),
-            "tw" => Some(Indicator::StickyAndOtherWritable),
-            "ex" => Some(Indicator::ExecutableFile),
-            "mi" => Some(Indicator::MissingFile),
-            "ca" => Some(Indicator::Capabilities),
-            "mh" => Some(Indicator::MultipleHardLinks),
-            "lc" => Some(Indicator::LeftCode),
-            "rc" => Some(Indicator::RightCode),
-            "ec" => Some(Indicator::EndCode),
-            "rs" => Some(Indicator::Reset),
-            "cl" => Some(Indicator::ClearLine),
+    pub fn from<T: AsRef<OsStr>>(indicator: T) -> Option<Indicator> {
+        match indicator.as_ref().as_bytes() {
+            b"no" => Some(Indicator::Normal),
+            b"fi" => Some(Indicator::RegularFile),
+            b"di" => Some(Indicator::Directory),
+            b"ln" => Some(Indicator::SymbolicLink),
+            b"pi" => Some(Indicator::FIFO),
+            b"so" => Some(Indicator::Socket),
+            b"do" => Some(Indicator::Door),
+            b"bd" => Some(Indicator::BlockDevice),
+            b"cd" => Some(Indicator::CharacterDevice),
+            b"or" => Some(Indicator::OrphanedSymbolicLink),
+            b"su" => Some(Indicator::Setuid),
+            b"sg" => Some(Indicator::Setgid),
+            b"st" => Some(Indicator::Sticky),
+            b"ow" => Some(Indicator::OtherWritable),
+            b"tw" => Some(Indicator::StickyAndOtherWritable),
+            b"ex" => Some(Indicator::ExecutableFile),
+            b"mi" => Some(Indicator::MissingFile),
+            b"ca" => Some(Indicator::Capabilities),
+            b"mh" => Some(Indicator::MultipleHardLinks),
+            b"lc" => Some(Indicator::LeftCode),
+            b"rc" => Some(Indicator::RightCode),
+            b"ec" => Some(Indicator::EndCode),
+            b"rs" => Some(Indicator::Reset),
+            b"cl" => Some(Indicator::ClearLine),
             _ => None,
         }
     }
 }
-
-type FileNameSuffix = String;
 
 /// Iterator over the path components with their respective style.
 pub struct StyledComponents<'a> {
@@ -174,7 +173,11 @@ impl<'a> Iterator for StyledComponents<'a> {
     }
 }
 
+#[cfg(test)]
 const LS_COLORS_DEFAULT: &str = "rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:";
+#[cfg(not(test))]
+const LS_COLORS_DEFAULT: &str = // enough for most cases
+    "di=01;34:ln=01;36:ex=01;32:or=01;31:so=01;35:cd=00;33;00:bd=3;33;00:pi=00;33:";
 
 /// Holds information about how different file system entries should be colorized / styled.
 #[derive(Debug, Clone)]
@@ -183,7 +186,7 @@ pub struct LsColors {
 
     // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
     // preserve the exact order of the mapping in order to be consistent with `ls`.
-    suffix_mapping: Vec<(FileNameSuffix, Style)>,
+    suffix_mapping: Vec<(OsString, Style)>,
 }
 
 impl Default for LsColors {
@@ -205,26 +208,24 @@ impl LsColors {
 
     /// Creates a new [`LsColors`](struct.LsColors.html) instance from the `LS_COLORS` environment variable.
     pub fn from_env() -> Option<Self> {
-        env::var("LS_COLORS")
-            .ok()
+        env::var_os("LS_COLORS")
             .as_ref()
             .map(|s| Self::from_string(s))
     }
 
     /// Creates a new [`LsColors`](struct.LsColors.html) instance from the given string.
-    pub fn from_string(input: &str) -> Self {
+    pub fn from_string<T: AsRef<OsStr>>(input: T) -> Self {
         let mut lscolors = LsColors::empty();
 
-        for entry in input.split(':') {
-            let parts: Vec<_> = entry.split('=').collect();
+        for slice in input.as_ref().as_bytes().split(|byte| byte == &b':') {
+            let mut parts = slice.splitn(2, |byte| byte == &b'=');
 
-            if let Some([entry, ansi_style]) = parts.get(0..2) {
-                if let Some(style) = Style::from_ansi_sequence(ansi_style) {
-                    if entry.starts_with('*') {
-                        lscolors
-                            .suffix_mapping
-                            .push((entry[1..].to_string().to_ascii_lowercase(), style));
-                    } else if let Some(indicator) = Indicator::from(entry) {
+            if let (Some(entry), Some(code)) = (parts.next(), parts.next()) {
+                if let Some(style) = Style::from_ansi_sequence(OsStr::from_bytes(code)) {
+                    if entry.starts_with(b"*") {
+                        let suffix = OsString::from_vec(entry[1..].to_ascii_lowercase().to_vec());
+                        lscolors.suffix_mapping.push((suffix, style));
+                    } else if let Some(indicator) = Indicator::from(OsStr::from_bytes(entry)) {
                         lscolors.indicator_mapping.insert(indicator, style);
                     }
                 }
@@ -285,21 +286,19 @@ impl LsColors {
                 }
             }
 
-            if crate::fs::is_executable(&metadata) {
+            if self::fs::is_executable(&metadata) {
                 return self.style_for_indicator(Indicator::ExecutableFile);
             }
         }
 
-        // Note: using '.to_str()' here means that filename
-        // matching will not work with invalid-UTF-8 paths.
-        let filename = path.as_ref().file_name()?.to_str()?.to_ascii_lowercase();
+        let filename = path.as_ref().file_name()?.to_ascii_lowercase();
 
         // We need to traverse LS_COLORS from back to front
         // to be consistent with `ls`:
         for (suffix, style) in self.suffix_mapping.iter().rev() {
             // Note: For some reason, 'ends_with' is much
             // slower if we omit `.as_str()` here:
-            if filename.ends_with(suffix.as_str()) {
+            if filename.ends_with(suffix) {
                 return Some(style);
             }
         }
@@ -336,8 +335,8 @@ impl LsColors {
 
 #[cfg(test)]
 mod tests {
-    use crate::style::{Color, FontStyle, Style};
-    use crate::{Indicator, LsColors};
+    use super::style::{Color, FontStyle, Style};
+    use super::{Indicator, LsColors};
 
     use std::fs::{self, File};
     use std::path::{Path, PathBuf};

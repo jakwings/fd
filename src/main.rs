@@ -1,4 +1,3 @@
-extern crate ansi_term;
 extern crate atty;
 extern crate clap;
 extern crate ctrlc;
@@ -14,6 +13,7 @@ extern crate same_file;
 mod app;
 mod counter;
 mod exec;
+mod foss;
 mod fshelper;
 mod glob;
 mod internal;
@@ -21,7 +21,6 @@ mod lscolors;
 mod output;
 mod walk;
 
-use std::env;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
@@ -133,12 +132,7 @@ fn main() {
         _ => atty::is(atty::Stream::Stdout),
     };
     let ls_colors = if colorful {
-        // TODO: env::var_os
-        Some(
-            env::var("LS_COLORS")
-                .map(|val| LsColors::from_string(&val))
-                .unwrap_or_default(),
-        )
+        Some(LsColors::from_env().unwrap_or_default())
     } else {
         None
     };

@@ -60,12 +60,6 @@ pub fn is_dir(path: &Path) -> bool {
     }
 }
 
-pub fn is_symlink(path: &Path) -> bool {
-    path.symlink_metadata()
-        .map(|meta| meta.file_type().is_symlink())
-        .unwrap_or(false)
-}
-
 pub fn is_executable(meta: &fs::Metadata) -> bool {
     meta.permissions().mode() & 0o111 != 0
 }

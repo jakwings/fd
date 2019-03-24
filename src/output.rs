@@ -4,12 +4,10 @@ use std::path::Component::{Prefix, RootDir};
 use std::path::{self, Path, PathBuf};
 use std::process::exit;
 
-use super::ansi_term::Style;
 use super::nix::sys::signal::Signal::SIGPIPE;
 
-use super::fshelper::{is_executable, is_symlink};
 use super::internal::{error, AppOptions};
-use super::lscolors::LsColors;
+use super::lscolors::{self, LsColors};
 
 pub fn print_entry(entry: &Path, config: &AppOptions) {
     let result = if let Some(ref ls_colors) = config.ls_colors {
@@ -31,8 +29,11 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
 fn print_entry_colorized(path: &Path, config: &AppOptions, ls_colors: &LsColors) -> io::Result<()> {
     let main_separator = path::MAIN_SEPARATOR.to_string();
 
-    let default_style = Style::default();
-    let colorized_separator = ls_colors.directory.paint(main_separator.as_bytes());
+    let colorized_separator = ls_colors
+        .style_for_indicator(lscolors::Indicator::Directory)
+        .map(lscolors::Style::to_ansi_term_style)
+        .unwrap_or_default()
+        .paint(main_separator.as_bytes());
 
     // Full path to the current component.
     let mut component_path = PathBuf::new();
@@ -44,7 +45,10 @@ fn print_entry_colorized(path: &Path, config: &AppOptions, ls_colors: &LsColors)
         let compo = component.as_os_str();
         component_path.push(Path::new(compo));
 
-        let style = get_path_style(&component_path, &ls_colors).unwrap_or(&default_style);
+        let style = ls_colors
+            .style_for_path(&component_path)
+            .map(lscolors::Style::to_ansi_term_style)
+            .unwrap_or_default();
 
         if need_separator {
             colorized_separator.write_to(&mut buffer)?;
@@ -79,39 +83,4 @@ fn print_entry_uncolorized(path: &Path, config: &AppOptions) -> io::Result<()> {
     }
 
     io::stdout().write_all(&buffer.into_boxed_slice())
-}
-
-fn get_path_style<'a>(path: &Path, ls_colors: &'a LsColors) -> Option<&'a Style> {
-    if is_symlink(path) {
-        return if path.exists() {
-            Some(&ls_colors.symlink)
-        } else {
-            Some(&ls_colors.inexistent)
-        };
-    }
-
-    if path.is_dir() {
-        return Some(&ls_colors.directory);
-    }
-
-    let metadata = path.metadata();
-    if metadata.map(|meta| is_executable(&meta)).unwrap_or(false) {
-        return Some(&ls_colors.executable);
-    }
-
-    let filename_style = path
-        .file_name()
-        .and_then(|name| ls_colors.filenames.get(name));
-    if filename_style.is_some() {
-        return filename_style;
-    }
-
-    let extension_style = path
-        .extension()
-        .and_then(|ext| ls_colors.extensions.get(ext));
-    if extension_style.is_some() {
-        return extension_style;
-    }
-
-    None
 }

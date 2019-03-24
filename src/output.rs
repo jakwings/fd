@@ -1,7 +1,6 @@
 use std::io::{self, Write};
 use std::os::unix::ffi::OsStrExt;
-use std::path::Component::{Prefix, RootDir};
-use std::path::{self, Path, PathBuf};
+use std::path::Path;
 use std::process::exit;
 
 use super::nix::sys::signal::Signal::SIGPIPE;
@@ -27,39 +26,16 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
 }
 
 fn print_entry_colorized(path: &Path, config: &AppOptions, ls_colors: &LsColors) -> io::Result<()> {
-    let main_separator = path::MAIN_SEPARATOR.to_string();
-
-    let colorized_separator = ls_colors
-        .style_for_indicator(lscolors::Indicator::Directory)
-        .map(lscolors::Style::to_ansi_term_style)
-        .unwrap_or_default()
-        .paint(main_separator.as_bytes());
-
-    // Full path to the current component.
-    let mut component_path = PathBuf::new();
-    let mut need_separator = false;
+    // full path to the last component
     let mut buffer = Vec::new();
 
-    // Traverse the path and colorize each component
-    for component in path.components() {
-        let compo = component.as_os_str();
-        component_path.push(Path::new(compo));
-
-        let style = ls_colors
-            .style_for_path(&component_path)
+    // traverse the path and colorize each component
+    for (compo, style) in ls_colors.style_for_path_components(path) {
+        style
             .map(lscolors::Style::to_ansi_term_style)
-            .unwrap_or_default();
-
-        if need_separator {
-            colorized_separator.write_to(&mut buffer)?;
-        }
-        style.paint(compo.as_bytes()).write_to(&mut buffer)?;
-
-        // assigns later because RootDir (MAIN_SEPARATOR) could have been printed before
-        need_separator = match component {
-            Prefix(_) | RootDir => false,
-            _ => true,
-        };
+            .unwrap_or_default()
+            .paint(compo.as_os_str().as_bytes())
+            .write_to(&mut buffer)?;
     }
 
     if config.null_terminator {

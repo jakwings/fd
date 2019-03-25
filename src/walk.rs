@@ -261,7 +261,6 @@ fn spawn_sender_thread(
                             file_type: entry.file_type(),
                         }
                     } else {
-                        // TODO: need to suppress some warnings from deps
                         return WalkState::Continue;
                     }
                 }
@@ -283,6 +282,8 @@ fn spawn_sender_thread(
                         broken_symlink.unwrap()
                     } else {
                         if !err.is_partial() || config.verbose {
+                            // TODO: need to suppress some warnings from deps
+                            //       mkdir -m 000 entrance
                             warn(&err);
                         }
                         return WalkState::Skip;
@@ -303,7 +304,7 @@ fn spawn_sender_thread(
                             // entry_path.metadata() always follows symlinks
                             if let Ok(meta) = entry_path.metadata() {
                                 // only accept likely-execve(2)-able files
-                                meta.is_dir()  // this check fails for symlinks
+                                file_type.is_dir()
                                     || !(file_type.is_file() || file_type.is_symlink())
                                     || !is_executable(&meta)
                             } else {

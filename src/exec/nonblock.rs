@@ -8,7 +8,7 @@ use super::nix::sys::select;
 use super::nix::sys::time::{TimeVal, TimeValLike};
 use super::nix::Error;
 
-use super::super::counter::Counter;
+use super::counter::Counter;
 
 const BUF_SIZE: usize = 512;
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds

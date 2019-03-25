@@ -70,16 +70,16 @@ pub struct AppOptions {
 //trait Message = Display + ?Sized;
 
 pub fn fatal(message: &(impl Display + ?Sized)) -> ! {
-    writeln!(&mut ::std::io::stderr(), "[Error] {}", message).expect("write to stderr");
+    writeln!(&mut ::std::io::stderr(), "[ff::Error] {}", message).expect("write to stderr");
     process::exit(1)
 }
 
 pub fn error(message: &(impl Display + ?Sized)) {
-    writeln!(&mut ::std::io::stderr(), "[Error] {}", message).expect("write to stderr");
+    writeln!(&mut ::std::io::stderr(), "[ff::Error] {}", message).expect("write to stderr");
 }
 
 pub fn warn(message: &(impl Display + ?Sized)) {
-    writeln!(&mut ::std::io::stderr(), "[Warning] {}", message).expect("write to stderr");
+    writeln!(&mut ::std::io::stderr(), "[ff::Warning] {}", message).expect("write to stderr");
 }
 
 pub fn int_error(name: &str, num_str: &str, message: &(impl Display + ?Sized)) -> ! {

@@ -5,7 +5,7 @@ use std::process::Stdio;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
-use super::super::counter::Counter;
+use super::counter::Counter;
 use super::{error, select_write_all, warn, ExecTemplate};
 
 // Each received input will generate a command with the supplied command template.

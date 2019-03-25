@@ -4,7 +4,7 @@ mod schedule;
 
 use super::nix;
 
-use super::{error, warn};
+use super::{counter, error, warn};
 
 pub use self::command::*;
 pub use self::nonblock::*;

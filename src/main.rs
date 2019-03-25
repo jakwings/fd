@@ -31,7 +31,7 @@ use regex::bytes::RegexBuilder;
 use self::exec::ExecTemplate;
 use self::fshelper::{is_dir, to_absolute_path};
 use self::glob::GlobBuilder;
-use self::internal::{error, int_error, int_error_os, warn, AppOptions};
+use self::internal::{error, fatal, int_error, int_error_os, warn, AppOptions};
 use self::lscolors::LsColors;
 use self::walk::FileType;
 
@@ -40,7 +40,7 @@ fn main() {
 
     let current_dir = PathBuf::from(".");
     if !is_dir(&current_dir) {
-        error("could not get current directory");
+        fatal("could not get current directory");
     }
 
     let mut root_dir = match args.value_of_os("DIRECTORY") {
@@ -58,7 +58,7 @@ fn main() {
         None => current_dir.clone(),
     };
     if !is_dir(&root_dir) {
-        error(&format!("{:?} is not a directory", root_dir.as_os_str()));
+        fatal(&format!("{:?} is not a directory", root_dir.as_os_str()));
     }
 
     let absolute = args.is_present("absolute-path") || root_dir.is_absolute();
@@ -74,7 +74,7 @@ fn main() {
         Some("x") | Some("executable") => FileType::Executable,
         Some(_) | None => {
             if let Some(sym) = args.value_of_os("file-type") {
-                error(&format!("unrecognizable file type {:?}", sym))
+                fatal(&format!("unrecognizable file type {:?}", sym))
             } else {
                 FileType::Any
             }
@@ -85,7 +85,7 @@ fn main() {
         .value_of("max-depth")
         .map(|num_str| match usize::from_str_radix(num_str, 10) {
             Ok(num) => num,
-            Err(err) => int_error("max-depth", num_str, &err.to_string()),
+            Err(err) => int_error("max-depth", num_str, &err),
         })
         .or_else(|| {
             args.value_of_os("max-depth").map(|num_str| {
@@ -97,7 +97,7 @@ fn main() {
         .value_of("max-buffer-time")
         .map(|num_str| match u64::from_str_radix(num_str, 10) {
             Ok(num) => num,
-            Err(err) => int_error("max-buffer-time", num_str, &err.to_string()),
+            Err(err) => int_error("max-buffer-time", num_str, &err),
         })
         .or_else(|| {
             args.value_of_os("max-buffer-time").map(|num_str| {
@@ -116,7 +116,7 @@ fn main() {
                     num_cpu
                 }
             }
-            Err(err) => int_error("threads", num_str, &err.to_string()),
+            Err(err) => int_error("threads", num_str, &err),
         })
         .or_else(|| {
             args.value_of_os("threads").map(|num_str| {
@@ -169,9 +169,10 @@ fn main() {
             let pattern = if config.unicode {
                 OsStr::to_os_string(pattern)
                     .into_string()
-                    .unwrap_or_else(|_| error("need a UTF-8 encoded pattern"))
+                    .unwrap_or_else(|_| fatal("need a UTF-8 encoded pattern"))
             } else {
-                escape_pattern(pattern).expect("[Error] invalid UTF-8 byte sequences found")
+                escape_pattern(pattern)
+                    .unwrap_or_else(|| fatal("invalid UTF-8 byte sequences found"))
             };
 
             // XXX: strange conformance to UTF-8
@@ -180,7 +181,7 @@ fn main() {
             RegexBuilder::new(&pattern)
         } else {
             let pattern =
-                OsStr::to_str(pattern).unwrap_or_else(|| error("need a UTF-8 encoded pattern"));
+                OsStr::to_str(pattern).unwrap_or_else(|| fatal("need a UTF-8 encoded pattern"));
 
             // XXX: strange conformance to UTF-8
             GlobBuilder::new(pattern, &config)
@@ -191,7 +192,7 @@ fn main() {
             .case_insensitive(config.case_insensitive)
             .dot_matches_new_line(true)
             .build()
-            .unwrap_or_else(|err| error(&err.to_string()))
+            .unwrap_or_else(|err| fatal(&err))
     });
 
     walk::scan(&root_dir, Arc::new(pattern), Arc::new(config));

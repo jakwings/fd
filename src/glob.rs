@@ -1,7 +1,7 @@
 use super::globset;
 use super::regex::bytes::RegexBuilder;
 
-use super::internal::{error, AppOptions};
+use super::internal::{fatal, AppOptions};
 
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
 // https://docs.rs/globset/latest/globset/#syntax
@@ -17,7 +17,7 @@ impl GlobBuilder {
             .build()
         {
             Ok(glob) => RegexBuilder::new(glob.regex()),
-            Err(err) => error(&err.to_string()),
+            Err(err) => fatal(&err),
         }
     }
 }

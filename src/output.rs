@@ -5,7 +5,7 @@ use std::process::exit;
 
 use super::nix::sys::signal::Signal::SIGPIPE;
 
-use super::internal::{error, AppOptions};
+use super::internal::{fatal, AppOptions};
 use super::lscolors::{self, LsColors};
 
 pub fn print_entry(entry: &Path, config: &AppOptions) {
@@ -18,9 +18,10 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
     if let Err(err) = result {
         if err.kind() == io::ErrorKind::BrokenPipe {
             let signum: i32 = unsafe { ::std::mem::transmute(SIGPIPE) };
+            // XXX: should not be silent for SIGTERM
             exit(0x80 + signum);
         } else {
-            error(&err.to_string());
+            fatal(&err);
         }
     }
 }

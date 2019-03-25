@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::fmt::Display;
 use std::io::Write;
 use std::process;
 
@@ -65,19 +66,26 @@ pub struct AppOptions {
     pub ls_colors: Option<LsColors>,
 }
 
-pub fn error(message: &str) -> ! {
+// XXX: https://github.com/rust-lang/rust/issues/41517
+//trait Message = Display + ?Sized;
+
+pub fn fatal(message: &(impl Display + ?Sized)) -> ! {
     writeln!(&mut ::std::io::stderr(), "[Error] {}", message).expect("write to stderr");
     process::exit(1)
 }
 
-pub fn warn(message: &str) {
+pub fn error(message: &(impl Display + ?Sized)) {
+    writeln!(&mut ::std::io::stderr(), "[Error] {}", message).expect("write to stderr");
+}
+
+pub fn warn(message: &(impl Display + ?Sized)) {
     writeln!(&mut ::std::io::stderr(), "[Warning] {}", message).expect("write to stderr");
 }
 
-pub fn int_error(name: &str, num_str: &str, message: &str) -> ! {
-    error(&format!("{}={:?} {}", name, num_str, message))
+pub fn int_error(name: &str, num_str: &str, message: &(impl Display + ?Sized)) -> ! {
+    fatal(&format!("{}={:?} {}", name, num_str, message))
 }
 
-pub fn int_error_os(name: &str, num_str: &OsStr, message: &str) -> ! {
-    error(&format!("{}={:?} {}", name, num_str, message))
+pub fn int_error_os(name: &str, num_str: &OsStr, message: &(impl Display + ?Sized)) -> ! {
+    fatal(&format!("{}={:?} {}", name, num_str, message))
 }

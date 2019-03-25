@@ -6,7 +6,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
 use super::super::counter::Counter;
-use super::{select_write_all, warn, ExecTemplate};
+use super::{error, select_write_all, warn, ExecTemplate};
 
 // Each received input will generate a command with the supplied command template.
 // Then execute the generated command and wait for the child process.
@@ -21,10 +21,16 @@ pub fn schedule(
 ) {
     loop {
         if counter.inc(1) {
+            error("receiver aborted");
             return;
         }
 
-        let lock = receiver.lock().expect("[Error] failed to acquire lock");
+        let lock = if let Ok(lock) = receiver.lock() {
+            lock
+        } else {
+            error("scheduler failed to receive data");
+            return;
+        };
 
         let path: PathBuf = match lock.recv() {
             Ok(data) => data,

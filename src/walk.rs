@@ -20,7 +20,7 @@ use super::regex::bytes::Regex;
 use super::counter::Counter;
 use super::exec;
 use super::fshelper::{is_executable, to_absolute_path};
-use super::internal::{error, warn, AppOptions};
+use super::internal::{error, fatal, warn, AppOptions};
 use super::output;
 
 const MAX_CNT: usize = 500;
@@ -56,7 +56,7 @@ fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
         // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
         // XXX: https://github.com/rust-lang/rust/issues/33417
         let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
-
+        // XXX: should not be silent for SIGTERM
         exit(0x80 + signum);
     }
 }
@@ -83,12 +83,13 @@ fn spawn_receiver_thread(
                     match exec::select_read_to_end(&mut rx_counter, fdin, &mut lock, &mut bytes) {
                         Ok(None) => true,
                         Ok(Some(_size)) => false,
-                        Err(err) => error(&err.to_string()),
+                        Err(err) => fatal(&err.to_string()),
                     };
 
                 drop(lock);
 
                 if aborted {
+                    error("receiver thread failed to read from stdin");
                     return;
                 } else {
                     Some(bytes)
@@ -124,11 +125,13 @@ fn spawn_receiver_thread(
 
             // Wait for all threads to exit before exiting the program.
             for h in handles {
-                h.join().expect("[Error] unable to process search results");
+                h.join()
+                    .unwrap_or_else(|_| fatal("unable to process search results"));
             }
         } else {
             for value in rx {
                 if rx_counter.inc(1) {
+                    error("receiver thread aborted");
                     return;
                 }
                 output::print_entry(&value, &config);
@@ -171,7 +174,10 @@ fn spawn_sorter_thread(
 
                         if counter.inc(1) && time::Instant::now() - start > duration {
                             for v in buffer.drain(0..) {
-                                tx.send(v).unwrap();
+                                if tx.send(v).is_err() {
+                                    error("sorter thread failed to send data");
+                                    return;
+                                }
                             }
                             mode = ReceiverMode::Streaming;
                         }
@@ -181,7 +187,10 @@ fn spawn_sorter_thread(
                     }
                 },
                 ReceiverMode::Streaming => {
-                    tx.send(value).unwrap();
+                    if tx.send(value).is_err() {
+                        error("sorter thread failed to send data");
+                        return;
+                    }
                 }
             }
         }
@@ -193,7 +202,10 @@ fn spawn_sorter_thread(
             buffer.sort();
 
             for value in buffer {
-                tx.send(value).unwrap();
+                if tx.send(value).is_err() {
+                    error("sorter thread failed to send data");
+                    return;
+                }
             }
         }
     });
@@ -236,6 +248,7 @@ fn spawn_sender_thread(
 
         Box::new(move |entry_o| {
             if tx_counter.inc(1) {
+                error("sender thread aborted");
                 return WalkState::Quit;
             }
 
@@ -270,7 +283,7 @@ fn spawn_sender_thread(
                         broken_symlink.unwrap()
                     } else {
                         if !err.is_partial() || config.verbose {
-                            warn(&err.to_string());
+                            warn(&err);
                         }
                         return WalkState::Skip;
                     }
@@ -321,10 +334,13 @@ fn spawn_sender_thread(
                 if config.match_full_path {
                     if let Ok(path_buf) = to_absolute_path(&entry_path) {
                         if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                            tx.send(entry_path.to_owned()).unwrap();
+                            if tx.send(entry_path.to_owned()).is_err() {
+                                error("sender thread failed to send data");
+                                return WalkState::Quit;
+                            }
                         }
                     } else {
-                        error(&format!(
+                        fatal(&format!(
                             "could not get full path of {:?}",
                             entry_path.as_os_str()
                         ));
@@ -332,12 +348,18 @@ fn spawn_sender_thread(
                 } else {
                     if let Some(os_str) = entry_path.file_name() {
                         if pattern.is_match(os_str.as_bytes()) {
-                            tx.send(entry_path.to_owned()).unwrap();
+                            if tx.send(entry_path.to_owned()).is_err() {
+                                error("sender thread failed to send data");
+                                return WalkState::Quit;
+                            }
                         }
                     }
                 }
             } else {
-                tx.send(entry_path.to_owned()).unwrap();
+                if tx.send(entry_path.to_owned()).is_err() {
+                    error("sender thread failed to send data");
+                    return WalkState::Quit;
+                }
             }
 
             WalkState::Continue
@@ -366,7 +388,7 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
         ctrlc::set_handler(move || {
             atom.store(true, atomic::Ordering::Relaxed);
         })
-        .expect("[Error] could not set Ctrl-C handler");
+        .unwrap_or_else(|_| fatal("could not set Ctrl-C handler"));
     }
 
     // Spawn the thread that receives all results through the channel.
@@ -383,12 +405,12 @@ pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
     // Wait for the sender thread to sort & send all results.
     sender_thread
         .join()
-        .expect("[Error] unable to produce search results");
+        .unwrap_or_else(|_| fatal("unable to produce search results"));
 
     // Wait for the receiver thread to print out all results.
     receiver_thread
         .join()
-        .expect("[Error] unable to collect search results");
+        .unwrap_or_else(|_| fatal("unable to collect search results"));
 
     exit_if_sigint(&quitting);
 }

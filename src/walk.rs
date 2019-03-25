@@ -300,12 +300,15 @@ fn spawn_sender_thread(
                         FileType::Directory => !file_type.is_dir(),
                         FileType::Regular => !file_type.is_file(),
                         FileType::SymLink => !file_type.is_symlink(),
+                        // only accept likely-execve(2)-able files
                         FileType::Executable => {
                             // entry_path.metadata() always follows symlinks
                             if let Ok(meta) = entry_path.metadata() {
-                                // only accept likely-execve(2)-able files
-                                file_type.is_dir()
+                                // also exclude symlinks to directories
+                                meta.is_dir()
+                                    // exclude character device, block device, sockets, pipes, etc.
                                     || !(file_type.is_file() || file_type.is_symlink())
+                                    // with the execute permission file mode bits set
                                     || !is_executable(&meta)
                             } else {
                                 if !file_type.is_symlink() {

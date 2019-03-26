@@ -1,32 +1,22 @@
 pub use std::ffi::{OsStr, OsString};
 pub use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
-pub trait AsFakingRef<T: ?Sized> {
-    fn as_faking_ref(&self) -> &T;
-}
-
-impl<T: AsRef<OsStr>> AsFakingRef<[u8]> for T {
-    fn as_faking_ref(&self) -> &[u8] {
-        self.as_ref().as_bytes()
-    }
-}
-
-pub trait FckOsStrSck<T: AsFakingRef<[u8]>> {
-    fn starts_with(&self, bytes: &T) -> bool;
-    fn ends_with(&self, bytes: &T) -> bool;
+pub trait FckOsStrSck {
+    fn starts_with(&self, prefix: &OsStr) -> bool;
+    fn ends_with(&self, suffix: &OsStr) -> bool;
     fn to_ascii_lowercase(&self) -> OsString;
 }
 
-impl<T: AsFakingRef<[u8]>> FckOsStrSck<T> for T {
-    fn starts_with(&self, bytes: &T) -> bool {
-        self.as_faking_ref().starts_with(bytes.as_faking_ref())
+impl FckOsStrSck for OsStr {
+    fn starts_with(&self, prefix: &OsStr) -> bool {
+        self.as_bytes().starts_with(prefix.as_bytes())
     }
 
-    fn ends_with(&self, bytes: &T) -> bool {
-        self.as_faking_ref().ends_with(bytes.as_faking_ref())
+    fn ends_with(&self, suffix: &OsStr) -> bool {
+        self.as_bytes().ends_with(suffix.as_bytes())
     }
 
     fn to_ascii_lowercase(&self) -> OsString {
-        OsString::from_vec(self.as_faking_ref().to_ascii_lowercase())
+        OsString::from_vec(self.as_bytes().to_ascii_lowercase())
     }
 }

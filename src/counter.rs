@@ -16,9 +16,9 @@ impl Counter {
         }
     }
 
-    pub fn inc(&mut self, step: usize) -> bool {
-        if self.limit - self.count > step {
-            self.count += step;
+    pub fn inc(&mut self) -> bool {
+        if self.count < self.limit {
+            self.count += 1;
             return false;
         } else {
             self.count = 0;

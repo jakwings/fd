@@ -25,7 +25,7 @@ pub fn select_read_to_end<R: Read>(
     let mut fdset = select::FdSet::new();
 
     loop {
-        if counter.inc(1) {
+        if counter.inc() {
             return Ok(None);
         }
 
@@ -84,7 +84,7 @@ pub fn select_write_all<W: Write>(
     let mut fdset = select::FdSet::new();
 
     loop {
-        if counter.inc(1) {
+        if counter.inc() {
             return Ok(None);
         }
 

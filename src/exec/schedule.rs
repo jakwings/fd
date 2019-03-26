@@ -20,7 +20,7 @@ pub fn schedule(
     cache_output: bool,
 ) {
     loop {
-        if counter.inc(1) {
+        if counter.inc() {
             error("receiver aborted");
             return;
         }

@@ -130,7 +130,7 @@ fn spawn_receiver_thread(
             }
         } else {
             for value in rx {
-                if rx_counter.inc(1) {
+                if rx_counter.inc() {
                     error("receiver thread aborted");
                     return;
                 }
@@ -172,7 +172,7 @@ fn spawn_sorter_thread(
                     BufferTime::Duration => {
                         buffer.push(value);
 
-                        if counter.inc(1) && time::Instant::now() - start > duration {
+                        if counter.inc() && time::Instant::now() - start > duration {
                             for v in buffer.drain(0..) {
                                 if tx.send(v).is_err() {
                                     error("sorter thread failed to send data");
@@ -247,7 +247,7 @@ fn spawn_sender_thread(
         let mut tx_counter = Counter::new(MAX_CNT, Some(quitting));
 
         Box::new(move |entry_o| {
-            if tx_counter.inc(1) {
+            if tx_counter.inc() {
                 error("sender thread aborted");
                 return WalkState::Quit;
             }

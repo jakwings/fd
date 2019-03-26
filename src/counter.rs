@@ -1,14 +1,14 @@
-use std::sync::atomic::{self, AtomicBool};
+use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
 
 pub struct Counter {
-    signal: Option<Arc<AtomicBool>>,
+    signal: Option<Arc<AtomicUsize>>,
     limit: usize,
     count: usize,
 }
 
 impl Counter {
-    pub fn new(limit: usize, signal: Option<Arc<AtomicBool>>) -> Counter {
+    pub fn new(limit: usize, signal: Option<Arc<AtomicUsize>>) -> Counter {
         Counter {
             signal,
             limit,
@@ -23,7 +23,7 @@ impl Counter {
         } else {
             self.count = 0;
             if let Some(ref atom) = self.signal {
-                return atom.load(atomic::Ordering::Relaxed);
+                return atom.load(atomic::Ordering::Relaxed) != 0;
             }
             return true;
         }

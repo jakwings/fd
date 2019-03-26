@@ -1,7 +1,10 @@
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process;
+
+use super::regex::bytes::Regex;
 
 use super::exec::ExecTemplate;
 use super::lscolors::LsColors;
@@ -58,6 +61,12 @@ pub struct AppOptions {
 
     // The amount of time for buffering and sorting before streaming the search results.
     pub max_buffer_time: Option<u64>, // milliseconds
+
+    // The root directory used for searching.
+    pub root: PathBuf,
+
+    // The pattern for maching file paths.
+    pub pattern: Option<Regex>,
 
     // The command to execute with the search results.
     pub command: Option<ExecTemplate>,

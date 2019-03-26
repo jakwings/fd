@@ -19,7 +19,8 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
     if let Err(err) = result {
         if err.kind() == io::ErrorKind::BrokenPipe {
             let signum: i32 = unsafe { ::std::mem::transmute(SIGPIPE) };
-            // XXX: should not be silent for SIGTERM
+
+            // silently exit
             exit(0x80 + signum);
         } else {
             fatal(&err);

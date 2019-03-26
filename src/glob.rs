@@ -1,19 +1,19 @@
 use super::globset;
 use super::regex::bytes::RegexBuilder;
 
-use super::internal::{fatal, AppOptions};
+use super::internal::fatal;
 
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
 // https://docs.rs/globset/latest/globset/#syntax
 pub struct GlobBuilder {}
 
 impl GlobBuilder {
-    pub fn new(pattern: &str, config: &AppOptions) -> RegexBuilder {
+    pub fn new(pattern: &str, unicode: bool, full_path: bool) -> RegexBuilder {
         match globset::GlobBuilder::new(pattern)
-            .unicode(config.unicode)
+            .unicode(unicode)
             .backslash_escape(true)
             .case_insensitive(false)
-            .literal_separator(config.match_full_path)
+            .literal_separator(full_path)
             .build()
         {
             Ok(glob) => RegexBuilder::new(glob.regex()),

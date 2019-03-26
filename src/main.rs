@@ -1,6 +1,5 @@
 extern crate atty;
 extern crate clap;
-extern crate ctrlc;
 extern crate globset;
 extern crate ignore;
 #[macro_use]
@@ -9,6 +8,7 @@ extern crate nix;
 extern crate num_cpus;
 extern crate regex;
 extern crate same_file;
+extern crate signal_hook;
 
 mod app;
 mod counter;
@@ -142,31 +142,13 @@ fn main() {
         ExecTemplate::new(&cmd_args.collect())
     });
 
-    let config = AppOptions {
-        verbose: args.is_present("verbose"),
-        unicode: args.is_present("unicode"),
-        use_regex: args.is_present("use-regex"),
-        case_insensitive: args.is_present("ignore-case"),
-        match_full_path: args.is_present("full-path"),
-        sort_path: args.is_present("sort-path"),
-        dot_files: args.is_present("dot-files"),
-        read_ignore: !args.is_present("no-ignore"),
-        multiplex: args.is_present("multiplex"),
-        follow_symlink: args.is_present("follow-symlink"),
-        same_file_system: args.is_present("same-file-system"),
-        null_terminator: args.is_present("null-terminator"),
-        command: command,
-        ls_colors: ls_colors,
-        max_buffer_time: max_buffer_time,
-        max_depth: max_depth,
-        threads: num_thread,
-        absolute_path: absolute,
-        file_type: file_type,
-    };
-
+    let use_regex = args.is_present("use-regex");
+    let unicode = args.is_present("unicode");
+    let match_full_path = args.is_present("full-path");
+    let case_insensitive = args.is_present("ignore-case");
     let pattern = args.value_of_os("PATTERN").map(|pattern| {
-        let mut builder = if config.use_regex {
-            let pattern = if config.unicode {
+        let mut builder = if use_regex {
+            let pattern = if unicode {
                 OsStr::to_os_string(pattern)
                     .into_string()
                     .unwrap_or_else(|_| fatal("need a UTF-8 encoded pattern"))
@@ -184,18 +166,42 @@ fn main() {
                 OsStr::to_str(pattern).unwrap_or_else(|| fatal("need a UTF-8 encoded pattern"));
 
             // XXX: strange conformance to UTF-8
-            GlobBuilder::new(pattern, &config)
+            GlobBuilder::new(pattern, unicode, match_full_path)
         };
 
         builder
-            .unicode(config.unicode)
-            .case_insensitive(config.case_insensitive)
+            .unicode(unicode)
+            .case_insensitive(case_insensitive)
             .dot_matches_new_line(true)
             .build()
             .unwrap_or_else(|err| fatal(&err))
     });
 
-    walk::scan(&root_dir, Arc::new(pattern), Arc::new(config));
+    let config = AppOptions {
+        verbose: args.is_present("verbose"),
+        unicode: args.is_present("unicode"),
+        use_regex: args.is_present("use-regex"),
+        case_insensitive: args.is_present("ignore-case"),
+        match_full_path: args.is_present("full-path"),
+        sort_path: args.is_present("sort-path"),
+        dot_files: args.is_present("dot-files"),
+        read_ignore: !args.is_present("no-ignore"),
+        multiplex: args.is_present("multiplex"),
+        follow_symlink: args.is_present("follow-symlink"),
+        same_file_system: args.is_present("same-file-system"),
+        null_terminator: args.is_present("null-terminator"),
+        root: root_dir,
+        pattern: pattern,
+        command: command,
+        ls_colors: ls_colors,
+        max_buffer_time: max_buffer_time,
+        max_depth: max_depth,
+        threads: num_thread,
+        absolute_path: absolute,
+        file_type: file_type,
+    };
+
+    walk::scan(Arc::new(config));
 }
 
 // XXX: not elegant

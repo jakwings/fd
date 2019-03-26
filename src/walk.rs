@@ -5,17 +5,15 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::sync::atomic::{self, AtomicBool};
+use std::sync::atomic::{self, AtomicUsize};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
 use super::atty;
-use super::ctrlc;
 use super::ignore::{self, WalkBuilder, WalkState};
-use super::nix::sys::signal::Signal::SIGINT;
-use super::regex::bytes::Regex;
+use super::signal_hook;
 
 use super::counter::Counter;
 use super::exec;
@@ -51,20 +49,18 @@ struct DirEntry<'a> {
     file_type: Option<EntryFileType>,
 }
 
-fn exit_if_sigint(quitting: &Arc<AtomicBool>) {
-    if quitting.load(atomic::Ordering::Relaxed) {
-        // XXX: https://github.com/Detegr/rust-ctrlc/issues/26
-        // XXX: https://github.com/rust-lang/rust/issues/33417
-        let signum: i32 = unsafe { ::std::mem::transmute(SIGINT) };
-        // XXX: should not be silent for SIGTERM
-        exit(0x80 + signum);
+fn exit_if_sigint(quitting: &Arc<AtomicUsize>) {
+    let signum = quitting.load(atomic::Ordering::Relaxed);
+
+    if signum != 0 {
+        exit(0x80 + signum as i32);
     }
 }
 
 fn spawn_receiver_thread(
     rx: mpsc::Receiver<PathBuf>,
     config: Arc<AppOptions>,
-    quitting: Arc<AtomicBool>,
+    quitting: Arc<AtomicUsize>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut rx_counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
@@ -117,7 +113,7 @@ fn spawn_receiver_thread(
                 let quitting = Arc::clone(&quitting);
                 let mut counter = Counter::new(MAX_CNT / threads, Some(quitting));
                 let handle = thread::spawn(move || {
-                    exec::schedule(counter, rx, cmd, input, no_stdin, cache_output)
+                    exec::schedule(counter, rx, cmd, input, no_stdin, cache_output);
                 });
 
                 handles.push(handle);
@@ -215,17 +211,15 @@ fn spawn_sorter_thread(
     sorter_thread
 }
 
-fn spawn_sender_thread(
+fn spawn_sender_threads(
     tx: mpsc::Sender<PathBuf>,
-    root: &Path,
-    pattern: Arc<Option<Regex>>,
     config: Arc<AppOptions>,
-    quitting: Arc<AtomicBool>,
+    quitting: Arc<AtomicUsize>,
 ) -> thread::JoinHandle<()> {
     // middleware for sorting
     let (xtx, xrx) = mpsc::channel();
     let sorter_thread = spawn_sorter_thread(tx, xrx, Arc::clone(&config));
-    let walker = WalkBuilder::new(root)
+    let walker = WalkBuilder::new(&config.root)
         .hidden(!config.dot_files)
         .ignore(config.read_ignore)
         .git_ignore(config.read_ignore)
@@ -242,7 +236,6 @@ fn spawn_sender_thread(
     walker.run(|| {
         let tx = xtx.clone();
         let config = Arc::clone(&config);
-        let pattern = Arc::clone(&pattern);
         let quitting = Arc::clone(&quitting);
         let mut tx_counter = Counter::new(MAX_CNT, Some(quitting));
 
@@ -334,7 +327,7 @@ fn spawn_sender_thread(
                 }
             }
 
-            if let Some(ref pattern) = *pattern {
+            if let Some(ref pattern) = config.pattern {
                 if config.match_full_path {
                     if let Ok(path_buf) = to_absolute_path(&entry_path) {
                         if pattern.is_match(path_buf.as_os_str().as_bytes()) {
@@ -382,37 +375,37 @@ fn spawn_sender_thread(
 // If the `--exec` argument was supplied, this will create a thread pool for executing
 // jobs in parallel from a given command line and the discovered paths. Otherwise, each
 // path will simply be written to standard output.
-pub fn scan(root: &Path, pattern: Arc<Option<Regex>>, config: Arc<AppOptions>) {
+pub fn scan(config: Arc<AppOptions>) {
     let (tx, rx) = mpsc::channel();
 
     // A signal to tell the colorizer or the command processor to exit gracefully.
-    let quitting = Arc::new(AtomicBool::new(false));
-    {
-        let atom = Arc::clone(&quitting);
-        ctrlc::set_handler(move || {
-            atom.store(true, atomic::Ordering::Relaxed);
-        })
-        .unwrap_or_else(|_| fatal("could not set Ctrl-C handler"));
-    }
+    let quitting = Arc::new(AtomicUsize::new(0));
 
-    // Spawn the thread that receives all results through the channel.
-    let receiver_thread = spawn_receiver_thread(rx, Arc::clone(&config), Arc::clone(&quitting));
-
-    let sender_thread = spawn_sender_thread(
-        tx,
-        root,
-        pattern,
-        Arc::clone(&config),
+    signal_hook::flag::register_usize(
+        signal_hook::SIGINT,
         Arc::clone(&quitting),
-    );
+        signal_hook::SIGINT as usize,
+    )
+    .unwrap_or_else(|_| fatal("could not set SIGINT handler"));
+
+    signal_hook::flag::register_usize(
+        signal_hook::SIGTERM,
+        Arc::clone(&quitting),
+        signal_hook::SIGTERM as usize,
+    )
+    .unwrap_or_else(|_| fatal("could not set SIGTERM handler"));
+
+    // Spawn the threads that receive or send results through the channel.
+    let recv_handle = spawn_receiver_thread(rx, Arc::clone(&config), Arc::clone(&quitting));
+    let send_handle = spawn_sender_threads(tx, Arc::clone(&config), Arc::clone(&quitting));
 
     // Wait for the sender thread to sort & send all results.
-    sender_thread
+    send_handle
         .join()
         .unwrap_or_else(|_| fatal("unable to produce search results"));
 
     // Wait for the receiver thread to print out all results.
-    receiver_thread
+    recv_handle
         .join()
         .unwrap_or_else(|_| fatal("unable to collect search results"));
 

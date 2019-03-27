@@ -18,10 +18,8 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
 
     if let Err(err) = result {
         if err.kind() == io::ErrorKind::BrokenPipe {
-            let signum: i32 = unsafe { ::std::mem::transmute(SIGPIPE) };
-
             // silently exit
-            exit(0x80 + signum);
+            exit(0x80 + SIGPIPE as i32);
         } else {
             fatal(&err);
         }
@@ -42,7 +40,7 @@ fn print_entry_colorized(path: &Path, config: &AppOptions, ls_colors: &LsColors)
     }
     add_path_terminator(&mut buffer, config.null_terminator);
 
-    io::stdout().write_all(&buffer.into_boxed_slice())
+    io::stdout().write_all(buffer.as_slice())
 }
 
 fn print_entry_uncolorized(path: &Path, config: &AppOptions) -> io::Result<()> {
@@ -51,7 +49,7 @@ fn print_entry_uncolorized(path: &Path, config: &AppOptions) -> io::Result<()> {
     buffer.write(&path.as_os_str().as_bytes())?;
     add_path_terminator(&mut buffer, config.null_terminator);
 
-    io::stdout().write_all(&buffer.into_boxed_slice())
+    io::stdout().write_all(buffer.as_slice())
 }
 
 fn add_path_terminator(buffer: &mut Vec<u8>, null_terminated: bool) {

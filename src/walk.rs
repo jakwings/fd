@@ -1,4 +1,3 @@
-use std::fs::FileType as EntryFileType;
 use std::io;
 use std::option::Option;
 use std::os::unix::ffi::OsStrExt;
@@ -46,7 +45,7 @@ pub enum FileType {
 
 struct DirEntry<'a> {
     path: &'a Path,
-    file_type: Option<EntryFileType>,
+    file_type: Option<std::fs::FileType>,
 }
 
 fn exit_if_sigint(quitting: &Arc<AtomicUsize>) {
@@ -331,7 +330,7 @@ fn spawn_sender_threads(
                 if config.match_full_path {
                     if let Ok(path_buf) = to_absolute_path(&entry_path) {
                         if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                            if tx.send(entry_path.to_owned()).is_err() {
+                            if tx.send(entry_path.to_path_buf()).is_err() {
                                 error("sender thread failed to send data");
                                 return WalkState::Quit;
                             }
@@ -345,7 +344,7 @@ fn spawn_sender_threads(
                 } else {
                     if let Some(os_str) = entry_path.file_name() {
                         if pattern.is_match(os_str.as_bytes()) {
-                            if tx.send(entry_path.to_owned()).is_err() {
+                            if tx.send(entry_path.to_path_buf()).is_err() {
                                 error("sender thread failed to send data");
                                 return WalkState::Quit;
                             }
@@ -353,7 +352,7 @@ fn spawn_sender_threads(
                     }
                 }
             } else {
-                if tx.send(entry_path.to_owned()).is_err() {
+                if tx.send(entry_path.to_path_buf()).is_err() {
                     error("sender thread failed to send data");
                     return WalkState::Quit;
                 }

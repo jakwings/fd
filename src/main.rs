@@ -214,9 +214,9 @@ fn escape_pattern(pattern: &OsStr) -> Option<String> {
         let c = *c;
 
         if c <= 0x1F || c >= 0x7F {
-            let mut buff = format!("\\x{:02X}", c);
+            let buff = format!("\\x{:02X}", c);
 
-            bytes.append(unsafe { buff.as_mut_vec() });
+            bytes.append(&mut buff.into_bytes());
         } else {
             bytes.push(c);
         }

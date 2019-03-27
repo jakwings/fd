@@ -12,6 +12,21 @@ use super::{error, select_read_to_end, select_write_all, warn, ExecTemplate};
 
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds
 
+#[derive(Debug)]
+enum Error {
+    Message(&'static str),
+}
+
+impl std::error::Error for self::Error {}
+
+impl std::fmt::Display for self::Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            self::Error::Message(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
 // Each received input will generate a command with the supplied command template.
 // Then execute the generated command and wait for the child process.
 // Resource would get exhausted if we keep spawning new processes without waiting for the old ones.
@@ -77,7 +92,7 @@ pub fn schedule(
                 if counter.inc() {
                     return Err(io::Error::new(
                         io::ErrorKind::Other,
-                        "scheduler thread aborted",
+                        self::Error::Message("scheduler thread aborted"),
                     ));
                 }
                 match child.try_wait() {
@@ -113,11 +128,15 @@ pub fn schedule(
 
             result
         }) {
-            if err.kind() != io::ErrorKind::Other {
-                warn(&format!("{:?}: {}", cmd.prog(), err.to_string()));
-            } else {
+            if err
+                .get_ref()
+                .map(|inner| inner.is::<self::Error>())
+                .unwrap_or(false)
+            {
                 error(&format!("{:?}: {}", cmd.prog(), err.to_string()));
                 return;
+            } else {
+                warn(&format!("{:?}: {}", cmd.prog(), err.to_string()));
             }
         }
     }

@@ -56,6 +56,26 @@ fn exit_if_sigint(quitting: &Arc<AtomicUsize>) {
     }
 }
 
+fn calc_send_threads(threads: usize, sort_path: bool) -> usize {
+    if sort_path {
+        threads - 1 // minus receiver thread
+    } else if threads > 1 {
+        (threads / 2).max(2)
+    } else {
+        threads.max(1)
+    }
+}
+
+fn calc_recv_threads(threads: usize, sort_path: bool) -> usize {
+    if sort_path {
+        1
+    } else if threads > 1 {
+        (threads / 2).max(2)
+    } else {
+        threads.max(1)
+    }
+}
+
 fn spawn_receiver_thread(
     rx: mpsc::Receiver<PathBuf>,
     config: Arc<AppOptions>,
@@ -93,7 +113,7 @@ fn spawn_receiver_thread(
                 None
             };
 
-            let threads = if !config.sort_path { config.threads } else { 1 };
+            let threads = calc_recv_threads(config.threads, config.sort_path);
             let cmd = Arc::new(cmd.clone());
             // Enable caching for broadcast, as interactive input may not satisfy all commands.
             let input = Arc::new(cached_input);
@@ -148,10 +168,11 @@ fn spawn_sorter_thread(
             0
         };
 
+        let threads = calc_recv_threads(config.threads, config.sort_path);
         let mut buffer = Vec::new();
         let mut mode = if config.sort_path {
             ReceiverMode::Buffering(BufferTime::Eternity)
-        } else if max_buffer_time > 0 && (config.command.is_none() || config.threads == 1) {
+        } else if max_buffer_time > 0 && (config.command.is_none() || threads == 1) {
             ReceiverMode::Buffering(BufferTime::Duration)
         } else {
             ReceiverMode::Streaming
@@ -218,6 +239,8 @@ fn spawn_sender_threads(
     // middleware for sorting
     let (xtx, xrx) = mpsc::channel();
     let sorter_thread = spawn_sorter_thread(tx, xrx, Arc::clone(&config));
+
+    let threads = calc_send_threads(config.threads, config.sort_path);
     let walker = WalkBuilder::new(&config.root)
         .hidden(!config.dot_files)
         .ignore(config.read_ignore)
@@ -228,7 +251,9 @@ fn spawn_sender_threads(
         .same_file_system(config.same_file_system)
         .follow_links(config.follow_symlink)
         .max_depth(config.max_depth)
-        .threads(config.threads)
+        .threads(threads)
+        // the non-parallel version can output first few sorted results earlier
+        // and make less buffering but the total time used is 4 times longer
         .build_parallel();
 
     // Spawn the sender threads.

@@ -17,8 +17,8 @@ _ff() {
     _arguments "${_arguments_options[@]}" \
 '-t+[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
 '--type=[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
-'-d+[Set maximum search depth. \[default: none\]]' \
-'--max-depth=[Set maximum search depth. \[default: none\]]' \
+'-d+[Set maximum search depth. \[default: unlimited\]]' \
+'--max-depth=[Set maximum search depth. \[default: unlimited\]]' \
 '-c+[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
 '--color=[When to use colors: auto, never, always \[default: auto\]]: :(auto never always)' \
 '-j+[Set number of threads for searching and command execution.]' \
@@ -28,20 +28,20 @@ _ff() {
 '--exec=[Execute the given command for each search result.]' \
 '-g[Search with a glob pattern. \[default\]]' \
 '--glob[Search with a glob pattern. \[default\]]' \
-'-r[Search with a regex pattern. \[default: glob\]]' \
-'--regex[Search with a regex pattern. \[default: glob\]]' \
-'-u[Match UTF-8 scalar values \[default: match bytes\]]' \
-'--unicode[Match UTF-8 scalar values \[default: match bytes\]]' \
-'-i[Case-insensitive search. \[default: case-sensitive\]]' \
-'--ignore-case[Case-insensitive search. \[default: case-sensitive\]]' \
+'-r[Search with a regex pattern.]' \
+'--regex[Search with a regex pattern.]' \
+'-u[Match UTF-8 scalar values]' \
+'--unicode[Match UTF-8 scalar values]' \
+'-i[Case-insensitive search.]' \
+'--ignore-case[Case-insensitive search.]' \
 '-s[Case-sensitive search. \[default\]]' \
 '--case-sensitive[Case-sensitive search. \[default\]]' \
-'-p[Match full paths. \[default: match filename\]]' \
-'--full-path[Match full paths. \[default: match filename\]]' \
+'-p[Match the full path of a file.]' \
+'--full-path[Match the full path of a file.]' \
 '-L[Follow symbolic links.]' \
 '--follow[Follow symbolic links.]' \
-'-M[Do not descend into directories on other file systems.]' \
-'--mount[Do not descend into directories on other file systems.]' \
+'-M[Do not descend into directories on another file system.]' \
+'--mount[Do not descend into directories on another file system.]' \
 '-0[Terminate each search result with NUL.]' \
 '--print0[Terminate each search result with NUL.]' \
 '-A[Output absolute paths instead of relative paths.]' \
@@ -54,15 +54,18 @@ _ff() {
 '--no-ignore[Do not respect .(git)ignore files.]' \
 '-m[All executed commands receive the same input.]' \
 '--multiplex[All executed commands receive the same input.]' \
-'-v[Warn about I/O errors, file permissions, symlink loops, etc.]' \
-'--verbose[Warn about I/O errors, file permissions, symlink loops, etc.]' \
-'-h[Prints help information. Use --help to show details and full list of options.]' \
-'--help[Prints help information. Use --help to show details and full list of options.]' \
-'-V[Prints version information]' \
-'--version[Prints version information]' \
-'::DIRECTORY -- The root directory for the search. \[optional\]:_files' \
+'-v[Warn about I/O errors, permission, symlink loops, etc.]' \
+'--verbose[Warn about I/O errors, permission, symlink loops, etc.]' \
+'-h[Print help information.
+Use --help to show details and full list of options.]' \
+'--help[Print help information.
+Use --help to show details and full list of options.]' \
+'-V[Print version information.]' \
+'--version[Print version information.]' \
+'::DIRECTORY -- The root directory for the search. \[optional\]
+If omitted, search the current working directory.:_files' \
 '::PATTERN -- The search pattern, a regex or glob pattern. \[optional\]
-The default values for regex and glob are ^ and * respectively.:_files' \
+The default patterns for regex and glob are ^ and * respectively.:_files' \
 && ret=0
     
 }

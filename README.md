@@ -21,13 +21,13 @@ cargo install --features simd-accel ff-find
 
 ## Usage
 
-ff lets you search for files and directories with a glob pattern.
+ff lets you search for files and directories with a [glob pattern][glob].
 
 ```bash
 ff $HOME '*.txt'
 ```
 
-More power (and danger) come with the --regex switch to use regex patterns.
+More power (and danger) come with the --regex switch to use [regex patterns](#References).
 
 ```bash
 ff --regex $HOME '\.txt$'
@@ -64,51 +64,64 @@ USAGE:
 
 OPTIONS:
     -g, --glob
-            Match the whole file path with a glob pattern. This is the default
-            behavior.
+            Match file paths with a glob pattern.
+            This is the default behavior.
 
     -r, --regex
-            Match the whole file path with a regex pattern. [default: glob]
+            Match file paths with a regex pattern.
 
     -u, --unicode
-            Turn on Unicode support for search patterns. Character classes are
-            not limited to ASCII. Only valid UTF-8 byte sequences can be matched
-            by the search pattern.
+            Turn on Unicode support for search patterns.
+
+            Character classes are not limited to ASCII. Only valid UTF-8 byte
+            sequences can be matched by the search pattern.
 
     -i, --ignore-case
-            Perform a case-insensitive search. This overrides --case-sensitive.
+            Perform a case-insensitive search.
 
     -s, --case-sensitive
-            Perform a case-sensitive search. This is the default behavior.
+            Perform a case-sensitive search.
+            This is the default behavior.
 
     -p, --full-path
-            Match the absolute path instead of the filename or directory name.
+            Match the absolute path instead of only the filename or directory
+            name.
 
     -L, --follow
             Follow symlinks and traverse the symlinked directories.
 
     -M, --mount
-            Do not descend into directories on other file systems, as a symlink
-            or normal directory may lead to a file on another file system.
+            Do not descend into directories on another disk or partition, as a
+            symlink or normal directory may lead to a file on another file
+            system.
 
     -0, --print0
             Each search result is terminated with NUL instead of LF when
             printed.
 
+            This option does not affect --exec.
+
     -A, --absolute-path
             Relative paths for output are transformed into absolute paths.
 
+            An absolute path may not be the real path due to symlinks.
+
     -S, --sort-path
-            The search results will be sorted by pathname before output. This
-            option will also force --exec to use a single thread for processing.
+            The search results will be sorted by pathname before output.
+
             Sort by lexicographically comparing the byte strings of path
-            components (not comparing the whole pathnames directly).
+            components. The search depth is also taken into comsideration.
+
+            This option will also force --exec to use a single thread for
+            processing.
 
     -a, --all
-            All files and directories are searched. By default, files and
-            directories of which the names start with a dot "." are ignored in
-            the search. Files ignored by patterns in .(git)ignore files are
-            still excluded.
+            All files and directories are searched.
+
+            By default, files and directories of which the names start with a
+            dot "." are ignored in the search.
+
+            Files ignored by patterns in .(git)ignore files are still excluded.
 
     -I, --no-ignore
             Show search results from files and directories that would otherwise
@@ -116,15 +129,19 @@ OPTIONS:
 
     -m, --multiplex
             Multiplex stdin of this program so that every executed command
-            shares the same input. Interactive input is disabled by caching,
-            even if the commands run sequentially.
+            shares the same input.
+
+            Interactive input is disabled by caching, even if the commands run
+            sequentially.
 
     -t, --type <filetype>
-            Filter the search by type: [default: no filter]
+            Filter the search by type: [default: any]
+
                 directory or d: directories
                      file or f: regular files
                   symlink or l: symbolic links
                executable or x: executable files
+
             Executable files are regular files with execute permission bits set
             or are symlinks pointing to the former, which means they are likely
             programs that can be loaded and run on the operating system.
@@ -134,50 +151,57 @@ OPTIONS:
 
     -c, --color <when>
             Declare when to use color for the pattern match output:
+
                   auto: use colors for interactive console [default]
                  never: do not use colorized output
                 always: always use colorized output
 
     -j, --threads <number>
             The number of threads to use for searching and command execution.
+
             0 means [default: number of available CPU cores]
 
         --max-buffer-time <milliseconds>
             The amount of time (in milliseconds) for the search results to be
             buffered and sorted before streaming.
 
+            This option is mostly a stub for testing purpose.
+
     -x, --exec <program [argument]... [;]>
-            Run the given command for each search result, which can be
-            represented by a pair of braces {} in the command. If the command
-            does not contain any {}, then a {} will be appended as an argument
-            to the program. A single semicolon ; will terminate the argument
-            list.
+            Run the given command for each search result.
+
+            The search result can be represented by a pair of braces {} in the
+            command. If the command does not contain any {}, then a {} will be
+            appended as an argument to the program. A single semicolon ; will
+            terminate the argument list.
+
             With --threads=1 commands will run sequentially. When multi-
             threading is enabled and multiplexing is not enabled, commands
-            will not receive input from the terminal. If not running with a
-            single thread, each output of the command will be buffered,
-            reordered (printed to stdout before stderr) and synchronized to
-            avoid overlap.
+            will not receive input from an interactive console.
+
+            If not running with a single thread, each output of the command will
+            be buffered, reordered (printed to stdout before stderr) and
+            synchronized to avoid overlap.
 
     -v, --verbose
             Show warnings about file permissions, loops caused by symlinks, I/O
             errors, invalid file content, etc.
 
     -h, --help
-            Prints help information. Use --help to show details and full list of
-            options.
+            Print help information.
+            Use --help to show details and full list of options.
     -V, --version
-            Prints version information
+            Print version information.
 
 
 ARGS:
     <DIRECTORY>
-            The directory where the search is rooted. If omitted, search the
-            current working directory.
+            The root directory for the search. [optional]
+            If omitted, search the current working directory.
 
     <PATTERN>
             The search pattern, a regex or glob pattern. [optional]
-            The default values for regex and glob are ^ and * respectively.
+            The default patterns for regex and glob are ^ and * respectively.
 
 
 NOTE: If the value of environment variable PWD is the path of a symlink pointing
@@ -188,14 +212,16 @@ path of a relative path.
 
 ## References
 
-*   Glob Syntax: https://docs.rs/globset/0.4.2/globset/#syntax
-    *   Note: ff uses a variant of *globset* which behaves slightly differently
+*   Glob Syntax: https://docs.rs/ff-find/latest/globset/#syntax
+    *   Note: ff uses a variant of [globset][glob] which behaves slightly differently
         for "backslash escape", i.e. `\<char>` drops the `\` and removes special
         effect of a character ANYWHERE.
 *   Regex Syntax: https://docs.rs/regex/1.1.2/regex/#syntax
 
 Please note that the nitty-gritty of supported syntax may change in the future.
 There are still some todos noted in the source code.
+
+[glob]: https://docs.rs/globset/latest/globset/#syntax
 
 
 ## License

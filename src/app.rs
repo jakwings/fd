@@ -48,10 +48,11 @@ pub fn build() -> App<'static, 'static> {
         .unset_settings(&[AppSettings::StrictUtf8])
         .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
+        .version_message("Print version information.")
         .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN]]")
         .about("A simple and fast utility for file search on Unix commandline.")
         .help_message(
-            "Prints help information. \
+            "Print help information.\n\
              Use --help to show details and full list of options.",
         )
         .after_help(
@@ -181,8 +182,13 @@ pub fn build() -> App<'static, 'static> {
                 .hidden_short_help(true),
         )
         .arg(arg("verbose").long("verbose").short("v"))
-        .arg(arg("DIRECTORY").default_value(".").empty_values(false))
-        .arg(arg("PATTERN"))
+        .arg(
+            arg("DIRECTORY")
+                .default_value(".")
+                .empty_values(false)
+                .next_line_help(true),
+        )
+        .arg(arg("PATTERN").next_line_help(true))
 }
 
 // TODO upstream: Remove trailing spaces in --help message.
@@ -193,8 +199,10 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "unicode",
-        "Match UTF-8 scalar values [default: match bytes]",
-        "Turn on Unicode support for search patterns. Character classes are not limited to ASCII. \
+        "Match UTF-8 scalar values",
+        "Turn on Unicode support for search patterns.\n\
+         \n\
+         Character classes are not limited to ASCII. \
          Only valid UTF-8 byte sequences can be matched by the search pattern."
     );
 
@@ -202,35 +210,37 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "use-glob",
         "Search with a glob pattern. [default]",
-        "Match the whole file path with a glob pattern. This is the default behavior."
+        "Match file paths with a glob pattern.\n\
+         This is the default behavior."
     );
 
     doc!(
         help,
         "use-regex",
-        "Search with a regex pattern. [default: glob]",
-        "Match the whole file path with a regex pattern. [default: glob]"
+        "Search with a regex pattern.",
+        "Match file paths with a regex pattern."
     );
 
     doc!(
         help,
         "ignore-case",
-        "Case-insensitive search. [default: case-sensitive]",
-        "Perform a case-insensitive search. This overrides --case-sensitive."
+        "Case-insensitive search.",
+        "Perform a case-insensitive search."
     );
 
     doc!(
         help,
         "case-sensitive",
         "Case-sensitive search. [default]",
-        "Perform a case-sensitive search. This is the default behavior."
+        "Perform a case-sensitive search.\n\
+         This is the default behavior."
     );
 
     doc!(
         help,
         "full-path",
-        "Match full paths. [default: match filename]",
-        "Match the absolute path instead of the filename or directory name."
+        "Match the full path of a file.",
+        "Match the absolute path instead of only the filename or directory name."
     );
 
     doc!(
@@ -243,8 +253,8 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "same-file-system",
-        "Do not descend into directories on other file systems.",
-        "Do not descend into directories on other file systems, \
+        "Do not descend into directories on another file system.",
+        "Do not descend into directories on another disk or partition, \
          as a symlink or normal directory may lead to a file on another file system."
     );
 
@@ -252,32 +262,41 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "null-terminator",
         "Terminate each search result with NUL.",
-        "Each search result is terminated with NUL instead of LF when printed."
+        "Each search result is terminated with NUL instead of LF when printed.\n\
+         \n\
+         This option does not affect --exec."
     );
 
     doc!(
         help,
         "absolute-path",
         "Output absolute paths instead of relative paths.",
-        "Relative paths for output are transformed into absolute paths."
+        "Relative paths for output are transformed into absolute paths.\n\
+         \n\
+         An absolute path may not be the real path due to symlinks."
     );
 
     doc!(
         help,
         "sort-path",
         "Sort the results by pathname.",
-        "The search results will be sorted by pathname before output. \
-         This option will also force --exec to use a single thread for processing. \
-         Sort by lexicographically comparing the byte strings of path components \
-         (not comparing the whole pathnames directly)."
+        "The search results will be sorted by pathname before output.\n\
+         \n\
+         Sort by lexicographically comparing the byte strings of path components. \
+         The search depth is also taken into comsideration.\n\
+         \n\
+         This option will also force --exec to use a single thread for processing."
     );
 
     doc!(
         help,
         "dot-files",
         "Include dot-files in the search.",
-        "All files and directories are searched. By default, files and directories \
-         of which the names start with a dot \".\" are ignored in the search. \
+        "All files and directories are searched.\n\
+         \n\
+         By default, files and directories \
+         of which the names start with a dot \".\" are ignored in the search.\n\
+         \n\
          Files ignored by patterns in .(git)ignore files are still excluded."
     );
 
@@ -293,7 +312,8 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "multiplex",
         "All executed commands receive the same input.",
-        "Multiplex stdin of this program so that every executed command shares the same input. \
+        "Multiplex stdin of this program so that every executed command shares the same input.\n\
+         \n\
          Interactive input is disabled by caching, even if the commands run sequentially."
     );
 
@@ -302,11 +322,13 @@ fn get_help() -> HashMap<&'static str, Help> {
         "file-type",
         "Filter by type: d,directory, f,file, l,symlink, x,executable",
         concat!(
-            "Filter the search by type: [default: no filter]\n",
+            "Filter the search by type: [default: any]\n",
+            "\n",
             "    directory or d: directories\n",
             "         file or f: regular files\n",
             "      symlink or l: symbolic links\n",
             "   executable or x: executable files\n",
+            "\n",
             "Executable files are regular files with execute permission bits set \
              or are symlinks pointing to the former, which means they are likely \
              programs that can be loaded and run on the operating system."
@@ -316,7 +338,7 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "max-depth",
-        "Set maximum search depth. [default: none]",
+        "Set maximum search depth. [default: unlimited]",
         "Limit the directory traversal to a given depth."
     );
 
@@ -326,6 +348,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "When to use colors: auto, never, always [default: auto]",
         concat!(
             "Declare when to use color for the pattern match output:\n",
+            "\n",
             "      auto: use colors for interactive console [default]\n",
             "     never: do not use colorized output\n",
             "    always: always use colorized output"
@@ -337,6 +360,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "threads",
         "Set number of threads for searching and command execution.",
         "The number of threads to use for searching and command execution.\n\
+         \n\
          0 means [default: number of available CPU cores]"
     );
 
@@ -344,20 +368,27 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "max-buffer-time",
         "Set time (in milliseconds) for buffering and sorting.",
-        "The amount of time (in milliseconds) for the search results to be buffered and sorted \
-         before streaming."
+        "The amount of time (in milliseconds) \
+         for the search results to be buffered and sorted before streaming.\n\
+         \n\
+         This option is mostly a stub for testing purpose."
     );
 
     doc!(
         help,
         "exec",
         "Execute the given command for each search result.",
-        "Run the given command for each search result, which can be represented by a pair of \
-         braces {} in the command. If the command does not contain any {}, then a {} will be \
-         appended as an argument to the program. A single semicolon ; will terminate the \
-         argument list.\n\
-         With --threads=1 commands will run sequentially. When multi-threading is enabled and \
-         multiplexing is not enabled, commands will not receive input from the terminal. \
+        "Run the given command for each search result.\n\
+         \n\
+         The search result can be represented by a pair of braces {} in the command. \
+         If the command does not contain any {}, \
+         then a {} will be appended as an argument to the program. \
+         A single semicolon ; will terminate the argument list.\n\
+         \n\
+         With --threads=1 commands will run sequentially. \
+         When multi-threading is enabled and multiplexing is not enabled, \
+         commands will not receive input from an interactive console.\n\
+         \n\
          If not running with a single thread, each output of the command will be buffered, \
          reordered (printed to stdout before stderr) and synchronized to avoid overlap."
     );
@@ -365,7 +396,7 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "verbose",
-        "Warn about I/O errors, file permissions, symlink loops, etc.",
+        "Warn about I/O errors, permission, symlink loops, etc.",
         "Show warnings about file permissions, loops caused by symlinks, I/O errors, \
          invalid file content, etc."
     );
@@ -373,8 +404,7 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "DIRECTORY",
-        "The root directory for the search. [optional]",
-        "The directory where the search is rooted. \
+        "The root directory for the search. [optional]\n\
          If omitted, search the current working directory."
     );
 
@@ -382,7 +412,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "PATTERN",
         "The search pattern, a regex or glob pattern. [optional]\n\
-         The default values for regex and glob are ^ and * respectively."
+         The default patterns for regex and glob are ^ and * respectively."
     );
 
     help

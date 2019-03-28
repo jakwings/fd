@@ -92,20 +92,20 @@ fn spawn_receiver_threads(
             let mut bytes = Vec::new();
             // Do not allow blocking I/O to delay the shutdown of this program.
             // e.g. when waiting for user input.
-            let aborted =
-                match exec::select_read_to_end(&mut rx_counter, fdin, &mut lock, &mut bytes) {
-                    Ok(None) => true,
-                    Ok(Some(_size)) => false,
-                    Err(err) => fatal(&err.to_string()),
-                };
-
+            match exec::select_read_to_end(&mut rx_counter, fdin, &mut lock, &mut bytes) {
+                Ok(Some(_size)) => (),
+                Ok(None) => {
+                    error("receiver thread aborted");
+                    return Vec::new();
+                }
+                Err(err) => fatal(&format!(
+                    "receiver thread failed to read from stdin: {}",
+                    err
+                )),
+            }
             drop(lock);
 
-            if aborted {
-                fatal("receiver thread failed to read from stdin");
-            } else {
-                Some(bytes)
-            }
+            Some(bytes)
         } else {
             None
         };
@@ -314,7 +314,6 @@ fn print_or_pipe(
             return false;
         }
     }
-
     return true;
 }
 

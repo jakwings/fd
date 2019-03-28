@@ -17,7 +17,7 @@ impl GlobBuilder {
             .build()
         {
             Ok(glob) => RegexBuilder::new(glob.regex()),
-            Err(err) => fatal(&err),
+            Err(err) => fatal(&format!("failed to parse glob pattern: {}", err)),
         }
     }
 }

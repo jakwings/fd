@@ -21,7 +21,7 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
             // silently exit
             exit(0x80 + SIGPIPE as i32);
         } else {
-            fatal(&err);
+            fatal(&format!("failed to print search result: {}", err));
         }
     }
 }

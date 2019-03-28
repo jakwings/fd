@@ -174,7 +174,7 @@ fn main() {
             .case_insensitive(case_insensitive)
             .dot_matches_new_line(true)
             .build()
-            .unwrap_or_else(|err| fatal(&err))
+            .unwrap_or_else(|err| fatal(&format!("failed to build search pattern: {}", err)))
     });
 
     let config = AppOptions {

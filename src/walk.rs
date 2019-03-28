@@ -318,95 +318,94 @@ fn print_or_pipe(
     return true;
 }
 
-fn transfer_data(
+fn spawn_sorter_thread(
     handles: Vec<thread::JoinHandle<()>>,
     tx: mpsc::Sender<PathBuf>,
     rx: mpsc::Receiver<PathBuf>,
     config: Arc<AppOptions>,
     quitting: Arc<AtomicUsize>,
-) -> i32 {
-    let exitcode = 0;
-    let print_mode = handles.is_empty();
+) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let print_mode = handles.is_empty();
 
-    let max_buffer_time = if atty::is(atty::Stream::Stdout) {
-        config.max_buffer_time.unwrap_or(100)
-    } else {
-        0
-    };
+        let max_buffer_time = if atty::is(atty::Stream::Stdout) {
+            config.max_buffer_time.unwrap_or(100)
+        } else {
+            0
+        };
 
-    let threads = calc_recv_threads(config.threads, config.sort_path);
-    let mut buffer = Vec::new();
-    let mut mode = if config.sort_path {
-        ReceiverMode::Buffering(BufferTime::Eternity)
-    } else if max_buffer_time > 0 && (config.command.is_none() || threads == 1) {
-        ReceiverMode::Buffering(BufferTime::Duration)
-    } else {
-        ReceiverMode::Streaming
-    };
+        let threads = calc_recv_threads(config.threads, config.sort_path);
+        let mut buffer = Vec::new();
+        let mut mode = if config.sort_path {
+            ReceiverMode::Buffering(BufferTime::Eternity)
+        } else if max_buffer_time > 0 && (config.command.is_none() || threads == 1) {
+            ReceiverMode::Buffering(BufferTime::Duration)
+        } else {
+            ReceiverMode::Streaming
+        };
 
-    let mut rx_counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
-    let mut counter = Counter::new(MAX_CNT, None);
-    let start = time::Instant::now();
-    let duration = time::Duration::from_millis(max_buffer_time);
+        let mut rx_counter = Counter::new(MAX_CNT, Some(Arc::clone(&quitting)));
+        let mut counter = Counter::new(MAX_CNT, None);
+        let start = time::Instant::now();
+        let duration = time::Duration::from_millis(max_buffer_time);
 
-    for value in rx {
-        if rx_counter.inc() {
-            error("sorter thread aborted");
-            return 1;
-        }
-        match mode {
-            ReceiverMode::Buffering(buf_time) => match buf_time {
-                BufferTime::Duration => {
-                    buffer.push(value);
-
-                    if counter.inc() && time::Instant::now() - start > duration {
-                        for value in buffer.drain(0..) {
-                            if !print_or_pipe(print_mode, value, &tx, &config) {
-                                return 1;
-                            }
-                        }
-                        mode = ReceiverMode::Streaming;
-                    }
-                }
-                BufferTime::Eternity => {
-                    buffer.push(value);
-                }
-            },
-            ReceiverMode::Streaming => {
-                if !print_or_pipe(print_mode, value, &tx, &config) {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    if !buffer.is_empty() {
-        // Stable sort is fast enough for nearly sorted items,
-        // although it uses 50% more memory than unstable sort.
-        // Would parallel sort really help much? Skeptical.
-        buffer.sort();
-
-        for value in buffer {
+        for value in rx {
             if rx_counter.inc() {
                 error("sorter thread aborted");
-                return 1;
+                return;
             }
-            if !print_or_pipe(print_mode, value, &tx, &config) {
-                return 1;
+            match mode {
+                ReceiverMode::Buffering(buf_time) => match buf_time {
+                    BufferTime::Duration => {
+                        buffer.push(value);
+
+                        if counter.inc() && time::Instant::now() - start > duration {
+                            for value in buffer.drain(0..) {
+                                if !print_or_pipe(print_mode, value, &tx, &config) {
+                                    return;
+                                }
+                            }
+                            mode = ReceiverMode::Streaming;
+                        }
+                    }
+                    BufferTime::Eternity => {
+                        buffer.push(value);
+                    }
+                },
+                ReceiverMode::Streaming => {
+                    if !print_or_pipe(print_mode, value, &tx, &config) {
+                        return;
+                    }
+                }
             }
         }
-    }
 
-    drop(tx);
+        if !buffer.is_empty() {
+            // Stable sort is fast enough for nearly sorted items,
+            // although it uses 50% more memory than unstable sort.
+            // Would parallel sort really help much? Skeptical.
+            buffer.sort();
 
-    // Wait for the --exec threads to print out all results.
-    for handle in handles {
-        if handle.join().is_err() {
-            fatal("failed to process search results");
+            for value in buffer {
+                if rx_counter.inc() {
+                    error("sorter thread aborted");
+                    return;
+                }
+                if !print_or_pipe(print_mode, value, &tx, &config) {
+                    return;
+                }
+            }
         }
-    }
 
-    exitcode
+        drop(tx);
+
+        // Wait for the --exec threads to print out all results.
+        for handle in handles {
+            if handle.join().is_err() {
+                fatal("failed to process search results");
+            }
+        }
+    })
 }
 
 // Recursively scan the given search path for files/pathnames matching the pattern.
@@ -438,13 +437,14 @@ pub fn scan(config: Arc<AppOptions>) {
 
     let handles = spawn_receiver_threads(xrx, Arc::clone(&config), Arc::clone(&quitting));
 
+    let handle = spawn_sorter_thread(handles, xtx, rx, Arc::clone(&config), Arc::clone(&quitting));
+
+    // blocking current thread because of WalkParallel::run()
     spawn_sender_threads(tx, Arc::clone(&config), Arc::clone(&quitting));
 
-    let exitcode = transfer_data(handles, xtx, rx, Arc::clone(&config), Arc::clone(&quitting));
+    if handle.join().is_err() {
+        fatal("failed to process search results");
+    }
 
     exit_if_sigint(&quitting);
-
-    if exitcode != 0 {
-        exit(exitcode);
-    }
 }

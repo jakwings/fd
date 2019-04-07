@@ -21,7 +21,7 @@ cargo install --features simd-accel ff-find
 
 ## Usage
 
-ff lets you search for files and directories with a [glob pattern][glob].
+ff lets you search for files and directories with a [glob pattern](#References).
 
 ```bash
 ff $HOME '*.txt'

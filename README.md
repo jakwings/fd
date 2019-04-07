@@ -213,14 +213,14 @@ ARGS:
                 * Negated expression:
                     "NOT" expr
                     "!" expr
-                * Both expressions are true:
+                * Both expr1 and expr2 are true:
                     expr1 "AND" expr2
                     expr1 expr2
                   expr2 is not evaluated if expr1 is false.
-                * One and only one of the two is true:
+                * One and only one of expr1 and expr2 is true:
                     expr1 "XOR" expr2
                   Both expressions are evaluated.
-                * At least one of the two is true:
+                * At least one of expr1 and expr2 is true:
                     expr1 "OR" expr2
                   expr2 is not evaluated if expr1 is true.
                 * Only return the value of expr2:

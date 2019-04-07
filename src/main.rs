@@ -13,34 +13,32 @@ extern crate signal_hook;
 mod app;
 mod counter;
 mod exec;
+mod filter;
 mod foss;
 mod fshelper;
 mod glob;
 mod internal;
 mod lscolors;
 mod output;
+mod pattern;
 mod walk;
 
-use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use regex::bytes::RegexBuilder;
-
 use self::exec::ExecTemplate;
+use self::filter::{Chain as FilterChain, FileType, Filter};
 use self::fshelper::{is_dir, to_absolute_path};
-use self::glob::GlobBuilder;
-use self::internal::{error, fatal, int_error, int_error_os, warn, AppOptions};
+use self::internal::{die, int_error, int_error_os, AppOptions};
 use self::lscolors::LsColors;
-use self::walk::FileType;
+use self::pattern::PatternBuilder;
 
 fn main() {
     let args = app::build().get_matches();
 
     let current_dir = PathBuf::from(".");
     if !is_dir(&current_dir) {
-        fatal("could not get current directory");
+        die("could not get current directory");
     }
 
     let mut root_dir = match args.value_of_os("DIRECTORY") {
@@ -58,7 +56,7 @@ fn main() {
         None => current_dir.clone(),
     };
     if !is_dir(&root_dir) {
-        fatal(&format!("{:?} is not a directory", root_dir.as_os_str()));
+        die(&format!("{:?} is not a directory", root_dir.as_os_str()));
     }
 
     let absolute = args.is_present("absolute-path") || root_dir.is_absolute();
@@ -67,19 +65,9 @@ fn main() {
         root_dir = to_absolute_path(&root_dir).unwrap();
     }
 
-    let file_type = match args.value_of("file-type") {
-        Some("d") | Some("directory") => FileType::Directory,
-        Some("f") | Some("file") => FileType::Regular,
-        Some("l") | Some("symlink") => FileType::SymLink,
-        Some("x") | Some("executable") => FileType::Executable,
-        Some(_) | None => {
-            if let Some(sym) = args.value_of_os("file-type") {
-                fatal(&format!("unrecognizable file type {:?}", sym))
-            } else {
-                FileType::Any
-            }
-        }
-    };
+    let file_type = args
+        .value_of_os("file-type")
+        .map(|symbol| FileType::from_str(&symbol).unwrap_or_else(|err| die(&err)));
 
     let max_depth = args
         .value_of("max-depth")
@@ -131,53 +119,13 @@ fn main() {
         Some("never") => false,
         _ => atty::is(atty::Stream::Stdout),
     };
-    let ls_colors = if colorful {
+    let palette = if colorful {
         Some(LsColors::from_env().unwrap_or_default())
     } else {
         None
     };
 
-    let command = args.values_of_os("exec").map(|cmd_args| {
-        // `cmd_args` does not contain the terminator ";"
-        ExecTemplate::new(&cmd_args.collect())
-    });
-
-    let use_regex = args.is_present("use-regex");
-    let unicode = args.is_present("unicode");
-    let match_full_path = args.is_present("full-path");
-    let case_insensitive = args.is_present("ignore-case");
-    let pattern = args.value_of_os("PATTERN").map(|pattern| {
-        let mut builder = if use_regex {
-            let pattern = if unicode {
-                OsStr::to_os_string(pattern)
-                    .into_string()
-                    .unwrap_or_else(|_| fatal("need a UTF-8 encoded pattern"))
-            } else {
-                escape_pattern(pattern)
-                    .unwrap_or_else(|| fatal("invalid UTF-8 byte sequences found"))
-            };
-
-            // XXX: strange conformance to UTF-8
-            //      (?u)π or (?u:π) doesn't match π without --unicode?
-            //      (?-u:π) is not allowed with --unicode?
-            RegexBuilder::new(&pattern)
-        } else {
-            let pattern =
-                OsStr::to_str(pattern).unwrap_or_else(|| fatal("need a UTF-8 encoded pattern"));
-
-            // XXX: strange conformance to UTF-8
-            GlobBuilder::new(pattern, unicode, match_full_path)
-        };
-
-        builder
-            .unicode(unicode)
-            .case_insensitive(case_insensitive)
-            .dot_matches_new_line(true)
-            .build()
-            .unwrap_or_else(|err| fatal(&format!("failed to build search pattern: {}", err)))
-    });
-
-    let config = AppOptions {
+    let mut config = AppOptions {
         verbose: args.is_present("verbose"),
         unicode: args.is_present("unicode"),
         use_regex: args.is_present("use-regex"),
@@ -191,36 +139,60 @@ fn main() {
         same_file_system: args.is_present("same-file-system"),
         null_terminator: args.is_present("null-terminator"),
         root: root_dir,
-        pattern: pattern,
-        command: command,
-        ls_colors: ls_colors,
+        filter: FilterChain::new(Filter::Anything, false),
+        command: None,
+        palette: palette,
         max_buffer_time: max_buffer_time,
         max_depth: max_depth,
         threads: num_thread,
         absolute_path: absolute,
-        file_type: file_type,
     };
 
-    walk::scan(Arc::new(config));
-}
+    let pattern = args.values_of_os("PATTERN").as_mut().map(|values| {
+        if args.occurrences_of("PATTERN") == 1 {
+            if let Some(cmd_args) = args.values_of_os("exec") {
+                // `cmd_args` does not contain the terminator ";"
+                config.command = Some(ExecTemplate::new(&cmd_args.collect()));
+            }
 
-// XXX: not elegant
-// The regex crate can't help much: https://github.com/rust-lang/regex/issues/426
-// The man asked my use case again and again, but I found this guy case-insensitive.
-fn escape_pattern(pattern: &OsStr) -> Option<String> {
-    let mut bytes = Vec::new();
+            let source = values.next().unwrap();
 
-    for c in pattern.as_bytes() {
-        let c = *c;
-
-        if c <= 0x1F || c >= 0x7F {
-            let buff = format!("\\x{:02X}", c);
-
-            bytes.append(&mut buff.into_bytes());
+            PatternBuilder::new(source)
+                .use_regex(config.use_regex)
+                .unicode(config.unicode)
+                .case_insensitive(config.case_insensitive)
+                .match_full_path(config.match_full_path)
+                .build()
+                .map(|pattern| {
+                    if config.match_full_path {
+                        FilterChain::new(Filter::Path(pattern), false)
+                    } else {
+                        FilterChain::new(Filter::Name(pattern), false)
+                    }
+                })
+                .unwrap_or_else(|err| {
+                    die(&format!(
+                        "failed to build search pattern {:?}:\n{}",
+                        source, err
+                    ))
+                })
         } else {
-            bytes.push(c);
-        }
-    }
+            if args.values_of_os("exec").is_some() {
+                die("forbidden to use filter chain and --exec at the same time");
+            }
 
-    String::from_utf8(bytes).ok()
+            FilterChain::from_args(values, &config)
+                .unwrap_or_else(|err| die(&format!("failed to build filter chain:\n{}", err)))
+        }
+    });
+
+    if let Some(file_type) = file_type {
+        config.filter = config.filter.and(Filter::Type(file_type), false);
+    }
+    if let Some(pattern) = pattern {
+        config.filter = config.filter.and(Filter::Chain(pattern), false);
+    }
+    config.filter = FilterChain::reduce(config.filter);
+
+    walk::scan(Arc::new(config));
 }

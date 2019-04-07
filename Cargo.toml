@@ -65,3 +65,4 @@ clap = "2"
 
 [features]
 simd-accel = [ "regex/unstable" ]
+reduction = []

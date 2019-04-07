@@ -49,7 +49,7 @@ pub fn build() -> App<'static, 'static> {
         .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
         .version_message("Print version information.")
-        .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN]]")
+        .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN | FILTER CHAIN]]")
         .about("A simple and fast utility for file search on Unix commandline.")
         .help_message(
             "Print help information.\n\
@@ -58,7 +58,7 @@ pub fn build() -> App<'static, 'static> {
         .after_help(
             "NOTE: If the value of environment variable PWD \
              is the path of a symlink pointing to the current working directory, \
-             it will be used for resolving the absolute path of a relative path.",
+             it is used for resolving the absolute path of a relative path.",
         )
         .arg(
             arg("use-glob")
@@ -188,7 +188,12 @@ pub fn build() -> App<'static, 'static> {
                 .empty_values(false)
                 .next_line_help(true),
         )
-        .arg(arg("PATTERN").next_line_help(true))
+        .arg(
+            arg("PATTERN")
+                .value_name("PATTERN | FILTER CHAIN")
+                .multiple(true)
+                .next_line_help(true),
+        )
 }
 
 // TODO upstream: Remove trailing spaces in --help message.
@@ -240,7 +245,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "full-path",
         "Match the full path of a file.",
-        "Match the absolute path instead of only the filename or directory name."
+        "Match the absolute path instead of only the file name or directory name."
     );
 
     doc!(
@@ -261,8 +266,9 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "null-terminator",
-        "Terminate each search result with NUL.",
-        "Each search result is terminated with NUL instead of LF when printed.\n\
+        "Terminate each search result with a NUL character.",
+        "Each search result is terminated with a NUL character instead of a newline (LF) \
+         when printed.\n\
          \n\
          This option does not affect --exec."
     );
@@ -280,12 +286,12 @@ fn get_help() -> HashMap<&'static str, Help> {
         help,
         "sort-path",
         "Sort the results by pathname.",
-        "The search results will be sorted by pathname before output.\n\
+        "The search results are sorted by pathname before output.\n\
          \n\
          Sort by lexicographically comparing the byte strings of path components. \
          The search depth is also taken into comsideration.\n\
          \n\
-         This option will also force --exec to use a single thread for processing."
+         This option also forces --exec to use a single thread for processing."
     );
 
     doc!(
@@ -322,7 +328,7 @@ fn get_help() -> HashMap<&'static str, Help> {
         "file-type",
         "Filter by type: d,directory, f,file, l,symlink, x,executable",
         concat!(
-            "Filter the search by type: [default: any]\n",
+            "Filter the search by type (case-insensitive): [default: any]\n",
             "\n",
             "    directory or d: directories\n",
             "         file or f: regular files\n",
@@ -382,14 +388,14 @@ fn get_help() -> HashMap<&'static str, Help> {
          \n\
          The search result can be represented by a pair of braces {} in the command. \
          If the command does not contain any {}, \
-         then a {} will be appended as an argument to the program. \
-         A single semicolon ; will terminate the argument list.\n\
+         then a {} is appended as an argument to the program. \
+         A single semicolon ; terminates the argument list.\n\
          \n\
-         With --threads=1 commands will run sequentially. \
-         When multi-threading is enabled and multiplexing is not enabled, \
-         commands will not receive input from an interactive console.\n\
+         With --threads=1 commands are run sequentially. \
+         If multi-threading is enabled and multiplexing is not enabled, \
+         commands do not receive input from an interactive console.\n\
          \n\
-         If not running with a single thread, each output of the command will be buffered, \
+         If not running with a single thread, each output of the command is buffered, \
          reordered (printed to stdout before stderr) and synchronized to avoid overlap."
     );
 
@@ -411,8 +417,73 @@ fn get_help() -> HashMap<&'static str, Help> {
     doc!(
         help,
         "PATTERN",
-        "The search pattern, a regex or glob pattern. [optional]\n\
-         The default patterns for regex and glob are ^ and * respectively."
+        "A regex or glob pattern for matching files. [optional]\n\
+         The default patterns for regex and glob are ^ and * respectively.\n\
+         It can also be a chain of filters. Use --help for details.",
+        concat!(
+            "A regex or glob pattern for matching files. [optional]\n",
+            "The default patterns for regex and glob are ^ and * respectively.\n",
+            "\n",
+            "The expression can also be a chain of filters with syntax as follows:\n",
+            "\n",
+            "  Ordered in order of decreasing precedence:\n",
+            "\n",
+            "    * Grouped expression:\n",
+            "        \"(\" expr \")\"\n",
+            "    * Negated expression:\n",
+            "        \"NOT\" expr\n",
+            "        \"!\" expr\n",
+            "    * Both expressions are true:\n",
+            "        expr1 \"AND\" expr2\n",
+            "        expr1 expr2\n",
+            "      expr2 is not evaluated if expr1 is false.\n",
+            "    * One and only one of the two is true:\n",
+            "        expr1 \"XOR\" expr2\n",
+            "      Both expressions are evaluated.\n",
+            "    * At least one of the two is true:\n",
+            "        expr1 \"OR\" expr2\n",
+            "      expr2 is not evaluated if expr1 is true.\n",
+            "    * Only return the value of expr2:\n",
+            "        expr1 \",\" expr2\n",
+            "      Both expressions are evaluated.\n",
+            "\n",
+            "  Operator names are case-insensitive.\n",
+            "\n",
+            "  Expressions (unchained):\n",
+            "\n",
+            "    * Perform a case-sensitive match on file names.\n",
+            "      name <glob pattern>\n",
+            "    * Perform a case-insensitive match on file names.\n",
+            "      iname <glob pattern>\n",
+            "    * Perform a case-sensitive match on (relative) file paths.\n",
+            "      path <glob pattern>\n",
+            "      regex <regex pattern>\n",
+            "    * Perform a case-insensitive match on (relative) file paths.\n",
+            "      ipath <glob pattern>\n",
+            "      iregex <regex pattern>\n",
+            "    * Match specified file types.\n",
+            "      type <file type[,file type]...>\n",
+            "    * Always true.\n",
+            "      true\n",
+            "    * Always false.\n",
+            "      false\n",
+            "    * Always true; print the result followed by a newline.\n",
+            "      print\n",
+            "    * Always true; print the result followed by a NUL character.\n",
+            "      print0\n",
+            "\n",
+            "  The head of a predicate is case-insensitive.\n",
+            "\n",
+            "\"print\" and \"print0\" are both predicates and actions.\n",
+            "\n",
+            "If no action is specified in the filter chain, \
+             all matched results are printed on the standard output \
+             with the line terminator determined by the option --print0.\n",
+            "\n",
+            "--exec is forbidden while using a filter chain.\n",
+            "\n",
+            "Please view the man page for example usage. (TODO)"
+        )
     );
 
     help

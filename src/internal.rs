@@ -4,11 +4,30 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 
-use super::regex::bytes::Regex;
-
 use super::exec::ExecTemplate;
+use super::filter::Chain as FilterChain;
 use super::lscolors::LsColors;
-use super::walk::FileType;
+
+#[derive(Debug)]
+pub enum Error {
+    Message(String),
+}
+
+impl std::error::Error for self::Error {}
+
+impl Display for self::Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            self::Error::Message(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
+impl self::Error {
+    pub fn from_str(message: &str) -> self::Error {
+        self::Error::Message(message.to_string())
+    }
+}
 
 pub struct AppOptions {
     // Whether to show warnings about permissions, I/O errors, detected loops, etc.
@@ -50,11 +69,10 @@ pub struct AppOptions {
     // Whether each search result is terminated with NUL instead of LF when printed.
     pub null_terminator: bool,
 
-    // The type of files to search for.
-    pub file_type: FileType,
-
     // The maximum search depth for directory traversal.
     pub max_depth: Option<usize>,
+
+    // TODO: min_depth
 
     // The number of threads to use.
     pub threads: usize,
@@ -65,21 +83,21 @@ pub struct AppOptions {
     // The root directory used for searching.
     pub root: PathBuf,
 
-    // The pattern for maching file paths.
-    pub pattern: Option<Regex>,
+    // The filter for matching file paths.
+    pub filter: FilterChain,
 
     // The command to execute with the search results.
     pub command: Option<ExecTemplate>,
 
     // The color scheme for output text.
-    pub ls_colors: Option<LsColors>,
+    pub palette: Option<LsColors>,
 }
 
 // XXX: https://github.com/rust-lang/rust/issues/41517
 //trait Message = Display + ?Sized;
 
-pub fn fatal(message: &(impl Display + ?Sized)) -> ! {
-    writeln!(&mut ::std::io::stderr(), "[ff::Error] {}", message).expect("write to stderr");
+pub fn die(message: &(impl Display + ?Sized)) -> ! {
+    error(message);
     process::exit(1)
 }
 
@@ -92,9 +110,9 @@ pub fn warn(message: &(impl Display + ?Sized)) {
 }
 
 pub fn int_error(name: &str, num_str: &str, message: &(impl Display + ?Sized)) -> ! {
-    fatal(&format!("{}={:?} {}", name, num_str, message))
+    die(&format!("{}={:?} {}", name, num_str, message))
 }
 
 pub fn int_error_os(name: &str, num_str: &OsStr, message: &(impl Display + ?Sized)) -> ! {
-    fatal(&format!("{}={:?} {}", name, num_str, message))
+    die(&format!("{}={:?} {}", name, num_str, message))
 }

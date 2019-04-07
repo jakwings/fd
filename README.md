@@ -60,7 +60,7 @@ ff $HOME .DS_Store --mount -0 | xargs -0 rm -v --
 
 ```
 USAGE:
-    ff [OPTIONS] [<DIRECTORY> [PATTERN]]
+    ff [OPTIONS] [<DIRECTORY> [PATTERN | FILTER CHAIN]]
 
 OPTIONS:
     -g, --glob
@@ -84,7 +84,7 @@ OPTIONS:
             This is the default behavior.
 
     -p, --full-path
-            Match the absolute path instead of only the filename or directory
+            Match the absolute path instead of only the file name or directory
             name.
 
     -L, --follow
@@ -96,8 +96,8 @@ OPTIONS:
             system.
 
     -0, --print0
-            Each search result is terminated with NUL instead of LF when
-            printed.
+            Each search result is terminated with a NUL character instead of a
+            newline (LF) when printed.
 
             This option does not affect --exec.
 
@@ -107,12 +107,12 @@ OPTIONS:
             An absolute path may not be the real path due to symlinks.
 
     -S, --sort-path
-            The search results will be sorted by pathname before output.
+            The search results are sorted by pathname before output.
 
             Sort by lexicographically comparing the byte strings of path
             components. The search depth is also taken into comsideration.
 
-            This option will also force --exec to use a single thread for
+            This option also forces --exec to use a single thread for
             processing.
 
     -a, --all
@@ -135,7 +135,7 @@ OPTIONS:
             sequentially.
 
     -t, --type <filetype>
-            Filter the search by type: [default: any]
+            Filter the search by type (case-insensitive): [default: any]
 
                 directory or d: directories
                      file or f: regular files
@@ -171,16 +171,16 @@ OPTIONS:
             Run the given command for each search result.
 
             The search result can be represented by a pair of braces {} in the
-            command. If the command does not contain any {}, then a {} will be
-            appended as an argument to the program. A single semicolon ; will
-            terminate the argument list.
+            command. If the command does not contain any {}, then a {} is
+            appended as an argument to the program. A single semicolon ;
+            terminates the argument list.
 
-            With --threads=1 commands will run sequentially. When multi-
-            threading is enabled and multiplexing is not enabled, commands
-            will not receive input from an interactive console.
+            With --threads=1 commands are run sequentially. If multi-threading
+            is enabled and multiplexing is not enabled, commands do not receive
+            input from an interactive console.
 
-            If not running with a single thread, each output of the command will
-            be buffered, reordered (printed to stdout before stderr) and
+            If not running with a single thread, each output of the command is
+            buffered, reordered (printed to stdout before stderr) and
             synchronized to avoid overlap.
 
     -v, --verbose
@@ -199,14 +199,75 @@ ARGS:
             The root directory for the search. [optional]
             If omitted, search the current working directory.
 
-    <PATTERN>
-            The search pattern, a regex or glob pattern. [optional]
+    <PATTERN | FILTER CHAIN>...
+            A regex or glob pattern for matching files. [optional]
             The default patterns for regex and glob are ^ and * respectively.
+
+            The expression can also be a chain of filters with syntax as
+            follows:
+
+              Ordered in order of decreasing precedence:
+
+                * Grouped expression:
+                    "(" expr ")"
+                * Negated expression:
+                    "NOT" expr
+                    "!" expr
+                * Both expressions are true:
+                    expr1 "AND" expr2
+                    expr1 expr2
+                  expr2 is not evaluated if expr1 is false.
+                * One and only one of the two is true:
+                    expr1 "XOR" expr2
+                  Both expressions are evaluated.
+                * At least one of the two is true:
+                    expr1 "OR" expr2
+                  expr2 is not evaluated if expr1 is true.
+                * Only return the value of expr2:
+                    expr1 "," expr2
+                  Both expressions are evaluated.
+
+              Operator names are case-insensitive.
+
+              Expressions (unchained):
+
+                * Perform a case-sensitive match on file names.
+                  name <glob pattern>
+                * Perform a case-insensitive match on file names.
+                  iname <glob pattern>
+                * Perform a case-sensitive match on (relative) file paths.
+                  path <glob pattern>
+                  regex <regex pattern>
+                * Perform a case-insensitive match on (relative) file paths.
+                  ipath <glob pattern>
+                  iregex <regex pattern>
+                * Match specified file types.
+                  type <file type[,file type]...>
+                * Always true.
+                  true
+                * Always false.
+                  false
+                * Always true; print the result followed by a newline.
+                  print
+                * Always true; print the result followed by a NUL character.
+                  print0
+
+              The head of a predicate is case-insensitive.
+
+            "print" and "print0" are both predicates and actions.
+
+            If no action is specified in the filter chain, all matched results
+            are printed on the standard output with the line terminator
+            determined by the option --print0.
+
+            --exec is forbidden while using a filter chain.
+
+            Please view the man page for example usage. (TODO)
 
 
 NOTE: If the value of environment variable PWD is the path of a symlink pointing
-to the current working directory, it will be used for resolving the absolute
-path of a relative path.
+to the current working directory, it is used for resolving the absolute path of
+a relative path.
 ```
 
 

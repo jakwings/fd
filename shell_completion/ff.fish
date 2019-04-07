@@ -12,7 +12,7 @@ complete -c ff -n "__fish_use_subcommand" -s s -l case-sensitive -d 'Case-sensit
 complete -c ff -n "__fish_use_subcommand" -s p -l full-path -d 'Match the full path of a file.'
 complete -c ff -n "__fish_use_subcommand" -s L -l follow -d 'Follow symbolic links.'
 complete -c ff -n "__fish_use_subcommand" -s M -l mount -d 'Do not descend into directories on another file system.'
-complete -c ff -n "__fish_use_subcommand" -s 0 -l print0 -d 'Terminate each search result with NUL.'
+complete -c ff -n "__fish_use_subcommand" -s 0 -l print0 -d 'Terminate each search result with a NUL character.'
 complete -c ff -n "__fish_use_subcommand" -s A -l absolute-path -d 'Output absolute paths instead of relative paths.'
 complete -c ff -n "__fish_use_subcommand" -s S -l sort-path -d 'Sort the results by pathname.'
 complete -c ff -n "__fish_use_subcommand" -s a -l all -d 'Include dot-files in the search.'

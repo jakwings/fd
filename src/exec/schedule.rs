@@ -1,6 +1,5 @@
 use std::io;
 use std::os::unix::io::AsRawFd;
-use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
@@ -8,31 +7,18 @@ use std::thread;
 use std::time;
 
 use super::counter::Counter;
-use super::{error, select_read_to_end, select_write_all, warn, ExecTemplate};
+use super::internal::{self, error, warn};
+use super::{select_read_to_end, select_write_all, ExecTemplate};
+use super::output::Entry;
 
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds
-
-#[derive(Debug)]
-enum Error {
-    Message(&'static str),
-}
-
-impl std::error::Error for self::Error {}
-
-impl std::fmt::Display for self::Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        match self {
-            self::Error::Message(msg) => write!(f, "{}", msg),
-        }
-    }
-}
 
 // Each received input will generate a command with the supplied command template.
 // Then execute the generated command and wait for the child process.
 // Resource would get exhausted if we keep spawning new processes without waiting for the old ones.
 pub fn schedule(
     mut counter: Counter,
-    receiver: Arc<Mutex<Receiver<PathBuf>>>,
+    receiver: Arc<Mutex<Receiver<Entry>>>,
     template: Arc<ExecTemplate>,
     cached_input: Arc<Option<Vec<u8>>>,
     no_stdin: bool,
@@ -51,8 +37,8 @@ pub fn schedule(
             return;
         };
 
-        let path: PathBuf = match lock.recv() {
-            Ok(data) => data,
+        let path = match lock.recv() {
+            Ok(data) => data.0,
             Err(_) => break,
         };
 
@@ -92,7 +78,7 @@ pub fn schedule(
                 if counter.inc() {
                     return Err(io::Error::new(
                         io::ErrorKind::Other,
-                        self::Error::Message("scheduler thread aborted"),
+                        internal::Error::from_str("scheduler thread aborted"),
                     ));
                 }
                 match child.try_wait() {
@@ -130,7 +116,7 @@ pub fn schedule(
         }) {
             if err
                 .get_ref()
-                .map(|inner| inner.is::<self::Error>())
+                .map(|inner| inner.is::<internal::Error>())
                 .unwrap_or(false)
             {
                 error(&format!("{:?}: {}", cmd.prog(), err.to_string()));

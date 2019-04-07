@@ -1,19 +1,22 @@
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
+use std::path::PathBuf;
 use std::process::exit;
 
 use super::nix::sys::signal::Signal::SIGPIPE;
 
-use super::internal::{fatal, warn, AppOptions};
+use super::filter::Action;
+use super::internal::{die, warn, AppOptions};
 use super::lscolors::{self, LsColors};
 
-pub fn print_entry(entry: &Path, config: &AppOptions) {
-    let result = if let Some(ref ls_colors) = config.ls_colors {
-        print_entry_colorized(entry, config, ls_colors)
+pub type Entry = (PathBuf, Vec<Action>);
+
+pub fn print_entry(entry: Entry, config: &AppOptions) {
+    let result = if let Some(ref palette) = config.palette {
+        print_entry_colorized(entry, palette)
     } else {
-        print_entry_uncolorized(entry, config)
+        print_entry_uncolorized(entry)
     };
 
     if let Err(err) = result {
@@ -21,38 +24,55 @@ pub fn print_entry(entry: &Path, config: &AppOptions) {
             // silently exit
             exit(0x80 + SIGPIPE as i32);
         } else {
-            fatal(&format!("failed to print search result: {}", err));
+            die(&format!("failed to print search result: {}", err));
         }
     }
 }
 
-fn print_entry_colorized(path: &Path, config: &AppOptions, ls_colors: &LsColors) -> io::Result<()> {
+fn print_entry_colorized(entry: Entry, palette: &LsColors) -> io::Result<()> {
     // full path to the last component
     let mut buffer = Vec::new();
 
     // traverse the path and colorize each component
-    for (compo, style) in ls_colors.style_for_path_components(path) {
+    for (compo, style) in palette.style_for_path_components(&entry.0) {
         style
             .map(lscolors::Style::to_ansi_term_style)
             .unwrap_or_default()
             .paint(compo.as_os_str().as_bytes())
             .write_to(&mut buffer)?;
     }
-    add_path_terminator(&mut buffer, config.null_terminator);
 
-    io::stdout().write_all(buffer.as_slice())
+    for action in entry.1 {
+        match action {
+            Action::Print => add_path_terminator(&mut buffer, false),
+            Action::Print0 => add_path_terminator(&mut buffer, true),
+        }
+        io::stdout().write_all(buffer.as_slice())?;
+        buffer.pop();
+    }
+
+    Ok(())
 }
 
-fn print_entry_uncolorized(path: &Path, config: &AppOptions) -> io::Result<()> {
+fn print_entry_uncolorized(entry: Entry) -> io::Result<()> {
     let mut buffer = Vec::new();
 
-    buffer.write(&path.as_os_str().as_bytes())?;
-    add_path_terminator(&mut buffer, config.null_terminator);
+    buffer.write(entry.0.as_os_str().as_bytes())?;
 
-    io::stdout().write_all(buffer.as_slice())
+    for action in entry.1 {
+        match action {
+            Action::Print => add_path_terminator(&mut buffer, false),
+            Action::Print0 => add_path_terminator(&mut buffer, true),
+        }
+        io::stdout().write_all(buffer.as_slice())?;
+        buffer.pop();
+    }
+
+    Ok(())
 }
 
 fn add_path_terminator(buffer: &mut Vec<u8>, null_terminated: bool) {
+    // TODO: avoid redundant checks
     check_path(buffer, null_terminated);
 
     if null_terminated {
@@ -65,7 +85,7 @@ fn add_path_terminator(buffer: &mut Vec<u8>, null_terminated: bool) {
 fn check_path(path: &Vec<u8>, null_terminated: bool) {
     // int execve(const char *path, char *const argv[], char *const envp[]);
     if path.contains(&b'\0') {
-        fatal(&format!(
+        die(&format!(
             "{:?} contains the nul character {:?}",
             OsStr::from_bytes(path),
             OsStr::new("\0")

@@ -1,8 +1,7 @@
 use std::io;
 use std::option::Option;
-use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::exit;
 use std::sync::atomic::{self, AtomicUsize};
 use std::sync::mpsc;
@@ -16,36 +15,26 @@ use super::signal_hook;
 
 use super::counter::Counter;
 use super::exec;
-use super::fshelper::{is_executable, to_absolute_path};
-use super::internal::{error, fatal, warn, AppOptions};
+use super::internal::{die, error, warn, AppOptions};
 use super::output;
 
 const MAX_CNT: usize = 500;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 enum BufferTime {
     Duration, // End buffering mode after this duration.
     Eternity, // Always buffer the search results.
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 enum ReceiverMode {
     Buffering(BufferTime), // Receiver is still buffering in order to sort the results.
     Streaming,             // Receiver is directly printing search results to the output.
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum FileType {
-    Any,
-    Directory,
-    Regular,
-    SymLink,
-    Executable,
-}
-
-struct DirEntry<'a> {
-    path: &'a Path,
-    file_type: Option<std::fs::FileType>,
+pub struct DirEntry<'a> {
+    pub path: &'a Path,
+    pub file_type: Option<std::fs::FileType>,
 }
 
 fn exit_if_sigint(quitting: &Arc<AtomicUsize>) {
@@ -77,7 +66,7 @@ fn calc_recv_threads(threads: usize, sort_path: bool) -> usize {
 }
 
 fn spawn_receiver_threads(
-    rx: mpsc::Receiver<PathBuf>,
+    rx: mpsc::Receiver<output::Entry>,
     config: Arc<AppOptions>,
     quitting: Arc<AtomicUsize>,
 ) -> Vec<thread::JoinHandle<()>> {
@@ -98,7 +87,7 @@ fn spawn_receiver_threads(
                     error("receiver thread aborted");
                     return Vec::new();
                 }
-                Err(err) => fatal(&format!(
+                Err(err) => die(&format!(
                     "receiver thread failed to read from stdin: {}",
                     err
                 )),
@@ -143,7 +132,7 @@ fn spawn_receiver_threads(
 }
 
 fn spawn_sender_threads(
-    tx: mpsc::Sender<PathBuf>,
+    tx: mpsc::Sender<output::Entry>,
     config: Arc<AppOptions>,
     quitting: Arc<AtomicUsize>,
 ) {
@@ -214,77 +203,11 @@ fn spawn_sender_threads(
                     }
                 }
             };
-            let entry_path = entry.path;
 
-            if config.file_type != FileType::Any {
-                if let Some(file_type) = entry.file_type {
-                    // only zero or one of is_dir/is_file/is_symlink can be true
-                    let to_skip = match config.file_type {
-                        FileType::Any => false,
-                        FileType::Directory => !file_type.is_dir(),
-                        FileType::Regular => !file_type.is_file(),
-                        FileType::SymLink => !file_type.is_symlink(),
-                        // only accept likely-execve(2)-able files
-                        FileType::Executable => {
-                            // entry_path.metadata() always follows symlinks
-                            if let Ok(meta) = entry_path.metadata() {
-                                // also exclude symlinks to directories
-                                meta.is_dir()
-                                    // exclude character device, block device, sockets, pipes, etc.
-                                    || !(file_type.is_file() || file_type.is_symlink())
-                                    // with the execute permission file mode bits set
-                                    || !is_executable(&meta)
-                            } else {
-                                if !file_type.is_symlink() {
-                                    // permission denied?
-                                    warn(&format!(
-                                        "could not get metadata of {:?}",
-                                        entry_path.as_os_str()
-                                    ));
-                                } // else: symlinks to non-existent files
-                                true
-                            }
-                        }
-                    };
-                    if to_skip {
-                        return WalkState::Continue;
-                    }
-                } else {
-                    warn(&format!(
-                        "could not get file type of {:?}",
-                        entry_path.as_os_str()
-                    ));
-                    return WalkState::Continue;
-                }
-            }
+            let actions = config.filter.apply(&entry, &config);
 
-            if let Some(ref pattern) = config.pattern {
-                if config.match_full_path {
-                    if let Ok(path_buf) = to_absolute_path(&entry_path) {
-                        if pattern.is_match(path_buf.as_os_str().as_bytes()) {
-                            if tx.send(entry_path.to_path_buf()).is_err() {
-                                error("sender thread failed to send data");
-                                return WalkState::Quit;
-                            }
-                        }
-                    } else {
-                        fatal(&format!(
-                            "could not get full path of {:?}",
-                            entry_path.as_os_str()
-                        ));
-                    }
-                } else {
-                    if let Some(os_str) = entry_path.file_name() {
-                        if pattern.is_match(os_str.as_bytes()) {
-                            if tx.send(entry_path.to_path_buf()).is_err() {
-                                error("sender thread failed to send data");
-                                return WalkState::Quit;
-                            }
-                        }
-                    }
-                }
-            } else {
-                if tx.send(entry_path.to_path_buf()).is_err() {
+            if !actions.is_empty() {
+                if tx.send((entry.path.to_owned(), actions)).is_err() {
                     error("sender thread failed to send data");
                     return WalkState::Quit;
                 }
@@ -302,14 +225,15 @@ fn spawn_sender_threads(
 #[inline(always)]
 fn print_or_pipe(
     print_mode: bool,
-    path: PathBuf,
-    tx: &mpsc::Sender<PathBuf>,
+    value: output::Entry,
+    tx: &mpsc::Sender<output::Entry>,
     config: &Arc<AppOptions>,
 ) -> bool {
     if print_mode {
-        output::print_entry(&path, config);
+        // NOTE: impossible to gracefully exit for `ff --color=always | break_pipe`
+        output::print_entry(value, config);
     } else {
-        if tx.send(path).is_err() {
+        if tx.send(value).is_err() {
             error("sorter thread failed to send data");
             return false;
         }
@@ -319,8 +243,8 @@ fn print_or_pipe(
 
 fn spawn_sorter_thread(
     handles: Vec<thread::JoinHandle<()>>,
-    tx: mpsc::Sender<PathBuf>,
-    rx: mpsc::Receiver<PathBuf>,
+    tx: mpsc::Sender<output::Entry>,
+    rx: mpsc::Receiver<output::Entry>,
     config: Arc<AppOptions>,
     quitting: Arc<AtomicUsize>,
 ) -> thread::JoinHandle<()> {
@@ -382,8 +306,9 @@ fn spawn_sorter_thread(
         if !buffer.is_empty() {
             // Stable sort is fast enough for nearly sorted items,
             // although it uses 50% more memory than unstable sort.
+            // Stable sort is also needed for ordered actions.
             // Would parallel sort really help much? Skeptical.
-            buffer.sort();
+            buffer.sort_by_key(|value| value.0.to_owned());
 
             for value in buffer {
                 if rx_counter.inc() {
@@ -401,7 +326,7 @@ fn spawn_sorter_thread(
         // Wait for the --exec threads to print out all results.
         for handle in handles {
             if handle.join().is_err() {
-                fatal("failed to process search results");
+                die("failed to process search results");
             }
         }
     })
@@ -421,14 +346,14 @@ pub fn scan(config: Arc<AppOptions>) {
         Arc::clone(&quitting),
         signal_hook::SIGINT as usize,
     )
-    .unwrap_or_else(|_| fatal("could not set SIGINT handler"));
+    .unwrap_or_else(|_| die("could not set SIGINT handler"));
 
     signal_hook::flag::register_usize(
         signal_hook::SIGTERM,
         Arc::clone(&quitting),
         signal_hook::SIGTERM as usize,
     )
-    .unwrap_or_else(|_| fatal("could not set SIGTERM handler"));
+    .unwrap_or_else(|_| die("could not set SIGTERM handler"));
 
     let (tx, rx) = mpsc::channel();
     // middleware for sorting
@@ -442,7 +367,7 @@ pub fn scan(config: Arc<AppOptions>) {
     spawn_sender_threads(tx, Arc::clone(&config), Arc::clone(&quitting));
 
     if handle.join().is_err() {
-        fatal("failed to process search results");
+        die("failed to process search results");
     }
 
     exit_if_sigint(&quitting);

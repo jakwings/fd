@@ -816,3 +816,196 @@ fn test_exec() {
     // TODO: Test isatty(stdin)
     // TODO: Test multiplexer for single-thread and multi-thread execution.
 }
+
+#[test]
+fn test_filter_chain() {
+    let env = TestEnv::new();
+
+    env.assert_output(true, &[".", "not", "true"], "");
+
+    env.assert_output(
+        true,
+        &[".", "not", "false"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &["--regex", ".", "name", "*"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &["--regex", ".", "path", "./**"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &["--regex", ".", "path", "**", "--full-path"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &["--glob", ".", "regex", "^./"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &["--glob", ".", "regex", "^/", "--full-path"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "name", "c.foo", "--ignore-case"],
+        "./one/two/c.foo",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "path", "**/c.foo", "--ignore-case"],
+        "./one/two/c.foo",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "regex", "/c.foo$", "--ignore-case"],
+        "./one/two/c.foo",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "iname", "C.Foo", "--case-sensitive"],
+        "./one/two/c.foo",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "ipath", "**/C.Foo", "--case-sensitive"],
+        "./one/two/c.foo",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "iregex", "/C.Foo$", "--case-sensitive"],
+        "./one/two/c.foo",
+    );
+
+    env.assert_output(true, &[".", "false", "and", "print", "or", "name", "*"], "");
+
+    env.assert_output(
+        true,
+        &[".", "name", "*foo", "and", "print0"],
+        "./a.fooNULL
+         ./one/b.fooNULL
+         ./one/two/c.fooNULL
+         ./one/two/three/d.fooNULL
+         ./one/two/three/directory_fooNULL",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "name", "*foo", "and", "(", "print", ",", "print0", ")"],
+        "./a.foo
+         ./a.fooNULL
+         ./one/b.foo
+         ./one/b.fooNULL
+         ./one/two/c.foo
+         ./one/two/c.fooNULL
+         ./one/two/three/d.foo
+         ./one/two/three/d.fooNULL
+         ./one/two/three/directory_foo
+         ./one/two/three/directory_fooNULL",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "type", "f,d", "and", "!", "type", "x"],
+        "./α β
+         ./one
+         ./one/b.foo
+         ./one.two
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+}

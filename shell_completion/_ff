@@ -42,8 +42,8 @@ _ff() {
 '--follow[Follow symbolic links.]' \
 '-M[Do not descend into directories on another file system.]' \
 '--mount[Do not descend into directories on another file system.]' \
-'-0[Terminate each search result with NUL.]' \
-'--print0[Terminate each search result with NUL.]' \
+'-0[Terminate each search result with a NUL character.]' \
+'--print0[Terminate each search result with a NUL character.]' \
 '-A[Output absolute paths instead of relative paths.]' \
 '--absolute-path[Output absolute paths instead of relative paths.]' \
 '-S[Sort the results by pathname.]' \
@@ -64,8 +64,9 @@ Use --help to show details and full list of options.]' \
 '--version[Print version information.]' \
 '::DIRECTORY -- The root directory for the search. \[optional\]
 If omitted, search the current working directory.:_files' \
-'::PATTERN -- The search pattern, a regex or glob pattern. \[optional\]
-The default patterns for regex and glob are ^ and * respectively.:_files' \
+'::PATTERN -- A regex or glob pattern for matching files. \[optional\]
+The default patterns for regex and glob are ^ and * respectively.
+It can also be a chain of filters. Use --help for details.:_files' \
 && ret=0
     
 }

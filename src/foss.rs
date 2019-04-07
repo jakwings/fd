@@ -5,6 +5,7 @@ pub trait FckOsStrSck {
     fn starts_with(&self, prefix: &OsStr) -> bool;
     fn ends_with(&self, suffix: &OsStr) -> bool;
     fn to_ascii_lowercase(&self) -> OsString;
+    fn split_at_comma<'a>(&'a self) -> Vec<&'a OsStr>;
 }
 
 impl FckOsStrSck for OsStr {
@@ -18,5 +19,12 @@ impl FckOsStrSck for OsStr {
 
     fn to_ascii_lowercase(&self) -> OsString {
         OsString::from_vec(self.as_bytes().to_ascii_lowercase())
+    }
+
+    fn split_at_comma<'a>(&'a self) -> Vec<&'a OsStr> {
+        self.as_bytes()
+            .split(|&byte| byte == b',')
+            .map(|bytes| OsStr::from_bytes(bytes))
+            .collect()
     }
 }

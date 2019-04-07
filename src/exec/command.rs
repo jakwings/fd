@@ -4,7 +4,7 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ExecCommand {
     argv: Vec<OsString>,
 }
@@ -28,7 +28,7 @@ impl ExecCommand {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ExecTemplate {
     argv: Vec<OsString>,
 }

@@ -1,7 +1,7 @@
 mod filetype;
 mod parser;
 #[cfg(feature = "reduction")]
-mod reduction;  // FIXME: experimental!
+mod reduction; // FIXME: experimental!
 
 use super::regex::bytes::Regex;
 
@@ -205,8 +205,7 @@ impl Chain {
                     Filter::Name(ref pattern) => Chain::bool(
                         &link.joint,
                         result,
-                        self.test_pattern(pattern, entry, false, config.match_full_path)
-                            ^ link.negated,
+                        self.test_pattern(pattern, entry, false, false) ^ link.negated,
                     ),
                     Filter::Path(ref pattern) => Chain::bool(
                         &link.joint,

@@ -859,6 +859,14 @@ fn test_filter_chain() {
          ./symlink2",
     );
 
+    env.assert_output(true, &[".", "name", "./**"], "");
+
+    env.assert_output(true, &[".", "name", "/**"], "");
+
+    env.assert_output(true, &[".", "name", "./**", "--full-path"], "");
+
+    env.assert_output(true, &[".", "name", "/**", "--full-path"], "");
+
     env.assert_output(
         true,
         &["--regex", ".", "path", "./**"],
@@ -879,7 +887,7 @@ fn test_filter_chain() {
 
     env.assert_output(
         true,
-        &["--regex", ".", "path", "**", "--full-path"],
+        &["--regex", ".", "path", "/**", "--full-path"],
         "./a.foo
          ./α β
          ./one

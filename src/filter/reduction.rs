@@ -327,7 +327,8 @@ fn merge_yor_links(
     debug_assert!(chain.links.len() > 0);
 
     let okay = match joint {
-        Joint::And | Joint::Or | Joint::Xor => (1..=1 + any1st).contains(&chain.links.len()),
+        Joint::And | Joint::Or => chain.links.len() == 1,  // due to short circuit
+        Joint::Xor => (1..=1 + any1st).contains(&chain.links.len()),
         Joint::Yor => true,
     };
 

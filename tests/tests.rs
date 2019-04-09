@@ -727,14 +727,14 @@ fn test_exec() {
             "--threads=1",
             "--exec",
             "printf",
-            "%s\\n",
+            ": %s\\n",
         ],
         &format!(
-            "{abs_path}/a.foo
-             {abs_path}/one/b.foo
-             {abs_path}/one/two/c.foo
-             {abs_path}/one/two/three/d.foo
-             {abs_path}/one/two/three/directory_foo",
+            ": {abs_path}/a.foo
+             : {abs_path}/one/b.foo
+             : {abs_path}/one/two/c.foo
+             : {abs_path}/one/two/three/d.foo
+             : {abs_path}/one/two/three/directory_foo",
             abs_path = &abs_path
         ),
     );
@@ -748,16 +748,16 @@ fn test_exec() {
             "--threads=1",
             "--exec",
             "printf",
-            "%s\\n",
+            ": %s\\n",
             ";",
             "--absolute-path",
         ],
         &format!(
-            "{abs_path}/a.foo
-             {abs_path}/one/b.foo
-             {abs_path}/one/two/c.foo
-             {abs_path}/one/two/three/d.foo
-             {abs_path}/one/two/three/directory_foo",
+            ": {abs_path}/a.foo
+             : {abs_path}/one/b.foo
+             : {abs_path}/one/two/c.foo
+             : {abs_path}/one/two/three/d.foo
+             : {abs_path}/one/two/three/directory_foo",
             abs_path = &abs_path
         ),
     );
@@ -771,14 +771,14 @@ fn test_exec() {
             "--threads=1",
             "--exec",
             "printf",
-            "%s\\n",
+            ": %s\\n",
             "{}",
         ],
-        "./a.foo
-         ./one/b.foo
-         ./one/two/c.foo
-         ./one/two/three/d.foo
-         ./one/two/three/directory_foo",
+        ": ./a.foo
+         : ./one/b.foo
+         : ./one/two/c.foo
+         : ./one/two/three/d.foo
+         : ./one/two/three/directory_foo",
     );
 
     env.assert_output(
@@ -790,27 +790,27 @@ fn test_exec() {
             "--threads=1",
             "--exec",
             "printf",
-            "%s.%s\\n",
+            ": %s.%s\\n",
         ],
-        "./α β.",
+        ": ./α β.",
     );
 
     env.assert_output(
         false,
-        &["--threads=4", "--sort-path", "--exec", "printf", "%s\\n"],
-        "./a.foo
-         ./one
-         ./one/b.foo
-         ./one/two
-         ./one/two/C.Foo2
-         ./one/two/c.foo
-         ./one/two/three
-         ./one/two/three/d.foo
-         ./one/two/three/directory_foo
-         ./one.two
-         ./symlink
-         ./symlink2
-         ./α β",
+        &["--threads=4", "--sort-path", "--exec", "printf", ": %s\\n"],
+        ": ./a.foo
+         : ./one
+         : ./one/b.foo
+         : ./one/two
+         : ./one/two/C.Foo2
+         : ./one/two/c.foo
+         : ./one/two/three
+         : ./one/two/three/d.foo
+         : ./one/two/three/directory_foo
+         : ./one.two
+         : ./symlink
+         : ./symlink2
+         : ./α β",
     );
 
     // TODO: Test isatty(stdin)

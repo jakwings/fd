@@ -125,6 +125,14 @@ fn main() {
         None
     };
 
+    let command = args.values_of_os("exec").map(|cmd_args| {
+        if args.occurrences_of("PATTERN") > 1 {
+            die("forbidden to use filter chain and --exec at the same time");
+        }
+        // `cmd_args` does not contain the terminator ";"
+        ExecTemplate::new(&cmd_args.collect())
+    });
+
     let mut config = AppOptions {
         verbose: args.is_present("verbose"),
         unicode: args.is_present("unicode"),
@@ -140,7 +148,7 @@ fn main() {
         null_terminator: args.is_present("null-terminator"),
         root: root_dir,
         filter: FilterChain::new(Filter::Anything, false),
-        command: None,
+        command: command,
         palette: palette,
         max_buffer_time: max_buffer_time,
         max_depth: max_depth,
@@ -150,11 +158,6 @@ fn main() {
 
     let pattern = args.values_of_os("PATTERN").as_mut().map(|values| {
         if args.occurrences_of("PATTERN") == 1 {
-            if let Some(cmd_args) = args.values_of_os("exec") {
-                // `cmd_args` does not contain the terminator ";"
-                config.command = Some(ExecTemplate::new(&cmd_args.collect()));
-            }
-
             let source = values.next().unwrap();
 
             PatternBuilder::new(source)
@@ -177,10 +180,6 @@ fn main() {
                     ))
                 })
         } else {
-            if args.values_of_os("exec").is_some() {
-                die("forbidden to use filter chain and --exec at the same time");
-            }
-
             FilterChain::from_args(values, &config)
                 .unwrap_or_else(|err| die(&format!("failed to build filter chain:\n{}", err)))
         }

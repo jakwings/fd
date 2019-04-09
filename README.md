@@ -61,7 +61,7 @@ ff / name c++ and type directory,symlink \
      and not path '/usr/include/**' and not path '/usr/bin/**'
 
 # likewise, "iname" means to case-insensitively match file names
-ff $HOME iname '*.chm' or iname '*.pdf' or name '*.epub'
+ff $HOME iname '*.chm' or iname '*.pdf' or iname '*.epub'
 # simpler
 ff $HOME iname '*.{chm,pdf,epub}'
 ```

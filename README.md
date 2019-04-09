@@ -13,12 +13,6 @@ ff: Just my own fork of [fd] with many incompatible changes. (**unstable**)
 cargo install ff-find
 ```
 
-or when SIMD acceleration is possible:
-
-```
-cargo install --features simd-accel ff-find
-```
-
 ## Usage
 
 ff lets you search for files and directories with a [glob pattern](#References).
@@ -54,6 +48,22 @@ ff $HOME .DS_Store --mount --exec rm -v --
 
 # could be faster by working in parallel with xargs
 ff $HOME .DS_Store --mount -0 | xargs -0 rm -v --
+```
+
+To exclude arbitrary directories or files, try the advanced features:
+
+```bash
+# exclamation marks "!" must be escaped for the bash shell
+ff / name c++ type directory,symlink \
+     \!path '/usr/include/**' \!path '/usr/bin/**'
+# ditto
+ff / name c++ and type directory,symlink \
+     and not path '/usr/include/**' and not path '/usr/bin/**'
+
+# likewise, "iname" means to case-insensitively match file names
+ff $HOME iname '*.chm' or iname '*.pdf' or name '*.epub'
+# simpler
+ff $HOME iname '*.{chm,pdf,epub}'
 ```
 
 ## Help

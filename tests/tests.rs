@@ -979,6 +979,16 @@ fn test_filter_chain() {
 
     env.assert_output(
         true,
+        &[".", "name", "*foo", "and", "print", "--print0"],
+        "./a.foo
+         ./one/b.foo
+         ./one/two/c.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo",
+    );
+
+    env.assert_output(
+        true,
         &[".", "name", "*foo", "and", "print0"],
         "./a.fooNULL
          ./one/b.fooNULL

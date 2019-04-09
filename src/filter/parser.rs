@@ -23,7 +23,7 @@ use super::*;
 // * ...
 // The head of an expression is case-insensitive.
 
-const MAX_RANK: u8 = u8::max_value();
+const MAX_RANK: u8 = 4;
 const MAX_DEPTH: u8 = 8;
 
 pub struct Config {
@@ -191,7 +191,7 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
                     }
                     self.tokens.push(Token::Txt(token));
                     self.source.next();
-                    chain = chain.and(Filter::Chain(self.parse_expr(depth, 3)?), false);
+                    chain = chain.and(Filter::Chain(self.parse_expr(depth, 4)?), false);
                 }
                 b"xor" => {
                     if rank > 2 {
@@ -199,7 +199,7 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
                     }
                     self.tokens.push(Token::Txt(token));
                     self.source.next();
-                    chain = chain.xor(Filter::Chain(self.parse_expr(depth, 2)?), false);
+                    chain = chain.xor(Filter::Chain(self.parse_expr(depth, 3)?), false);
                 }
                 b"or" => {
                     if rank > 1 {
@@ -207,7 +207,7 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
                     }
                     self.tokens.push(Token::Txt(token));
                     self.source.next();
-                    chain = chain.or(Filter::Chain(self.parse_expr(depth, 1)?), false);
+                    chain = chain.or(Filter::Chain(self.parse_expr(depth, 2)?), false);
                 }
                 b"," => {
                     if rank > 0 {
@@ -215,7 +215,7 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
                     }
                     self.tokens.push(Token::Txt(token));
                     self.source.next();
-                    chain = chain.yor(Filter::Chain(self.parse_expr(depth, 0)?), false);
+                    chain = chain.yor(Filter::Chain(self.parse_expr(depth, 1)?), false);
                 }
                 b")" => {
                     if depth > 0 {
@@ -230,7 +230,7 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
                     }
                     // implicit "AND"
                     self.tokens.push(Token::Txt(OsStr::new("AND")));
-                    chain = chain.and(Filter::Chain(self.parse_expr(depth, 3)?), false);
+                    chain = chain.and(Filter::Chain(self.parse_expr(depth, 4)?), false);
                 }
             }
         }

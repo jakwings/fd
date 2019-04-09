@@ -65,16 +65,12 @@ fn has_stubs(os_str: &OsStr) -> bool {
     let mut iter = os_str.as_bytes().iter();
 
     loop {
-        let (a, b) = (iter.next(), iter.next());
-        if a == Some(&b'{') && b == Some(&b'}') {
-            return true;
-        }
-        if b.is_none() {
-            break;
+        match (iter.next(), iter.next()) {
+            (Some(&b'{'), Some(&b'}')) => break true,
+            (_, None) => break false,
+            _ => (),
         }
     }
-
-    false
 }
 
 fn clear_stubs(os_str: &OsStr, path: &Path) -> OsString {

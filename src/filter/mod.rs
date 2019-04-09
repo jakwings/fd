@@ -1,6 +1,5 @@
 mod filetype;
 mod parser;
-#[cfg(feature = "reduction")]
 mod reduction; // FIXME: experimental!
 
 use super::foss::*;
@@ -129,10 +128,10 @@ impl Chain {
     }
 
     pub fn reduce(chain: Chain) -> Chain {
-        #[cfg(feature = "reduction")]
-        return reduction::reduce(chain);
-        #[cfg(not(feature = "reduction"))]
-        return chain;
+        if cfg!(feature = "reduction") {
+            return reduction::reduce(chain);
+        }
+        chain
     }
 
     // NOTE: x.not().or(y) == x.or(y).not()

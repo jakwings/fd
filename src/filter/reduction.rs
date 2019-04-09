@@ -4,9 +4,9 @@ use super::*;
 // further reduced by assert-rs/predicates-rs or cfallin/boolean_expression ?
 // but that might not be practical in most normal cases (i.e. no duplicates)
 pub fn reduce(mut chain: Chain) -> Chain {
-    loop {
-        let mut links = Vec::<Link>::with_capacity(chain.links.len());
+    while !chain.links.is_empty() {
         let mut recur = false;
+        let mut links = Vec::<Link>::with_capacity(chain.links.len());
         let iter = chain.links.into_iter();
 
         iter.for_each(|link| {
@@ -327,8 +327,8 @@ fn merge_yor_links(
     debug_assert!(chain.links.len() > 0);
 
     let okay = match joint {
-        Joint::And | Joint::Or => chain.links.len() == 1,  // due to short circuit
-        Joint::Xor => (1..=1 + any1st).contains(&chain.links.len()),
+        Joint::And | Joint::Or => chain.links.len() == 1, // due to short circuit
+        Joint::Xor => chain.links.len() >= 1 && chain.links.len() <= 1 + any1st,
         Joint::Yor => true,
     };
 

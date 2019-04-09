@@ -1,12 +1,28 @@
 use std::ffi::{OsStr, OsString};
 
 use super::globset;
-use super::regex::bytes::{Regex, RegexBuilder};
-
 use super::internal::Error;
 
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
-// https://docs.rs/globset/latest/globset/#syntax
+// https://docs.rs/ff-find/latest/globset/#syntax
+
+pub struct Glob {
+    pattern: String,
+    matcher: globset::GlobMatcher,
+}
+
+impl std::fmt::Debug for Glob {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self.pattern)
+    }
+}
+
+impl Glob {
+    pub fn is_match(&self, path: impl AsRef<OsStr>) -> bool {
+        self.matcher.is_match(path.as_ref())
+    }
+}
+
 pub struct GlobBuilder {
     pattern: OsString,
     unicode: bool,
@@ -24,7 +40,7 @@ impl GlobBuilder {
         }
     }
 
-    pub fn build(&self) -> Result<Regex, Error> {
+    pub fn build(&self) -> Result<Glob, Error> {
         // XXX: strange conformance to UTF-8
         let pattern =
             OsStr::to_str(&self.pattern).ok_or(Error::from_str("need a UTF-8 encoded pattern"))?;
@@ -32,20 +48,14 @@ impl GlobBuilder {
         globset::GlobBuilder::new(pattern)
             .unicode(self.unicode)
             .backslash_escape(true)
-            .case_insensitive(false)
+            .case_insensitive(self.case_insensitive)
             .literal_separator(self.match_full_path)
             .build()
-            .map_err(|err| Error::from_str(&err.to_string()))
-            .and_then(|glob| {
-                let mut builder = RegexBuilder::new(glob.regex());
-
-                builder
-                    .unicode(self.unicode)
-                    .case_insensitive(self.case_insensitive)
-                    .dot_matches_new_line(true)
-                    .build()
-                    .map_err(|err| Error::from_str(&err.to_string()))
+            .map(|glob| Glob {
+                pattern: glob.glob().to_string(),
+                matcher: glob.compile_matcher(),
             })
+            .map_err(|err| Error::from_str(&err.to_string()))
     }
 
     pub fn unicode(mut self, on: bool) -> GlobBuilder {

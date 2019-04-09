@@ -3,12 +3,10 @@ mod parser;
 #[cfg(feature = "reduction")]
 mod reduction; // FIXME: experimental!
 
-use super::regex::bytes::Regex;
-
 use super::foss::*;
 use super::fshelper::{is_executable, to_absolute_path};
 use super::internal::{die, warn, AppOptions, Error};
-use super::pattern::PatternBuilder;
+use super::pattern::{Pattern, PatternBuilder};
 use super::walk::DirEntry;
 
 pub use self::filetype::*;
@@ -23,8 +21,8 @@ pub enum Action {
 pub enum Filter {
     // TODO: Size(Range), Depth(usize), Perm(0oXXXX), ...
     Anything, // always true
-    Name(Regex),
-    Path(Regex),
+    Name(Pattern),
+    Path(Pattern),
     Type(FileType),
     Chain(Chain),
     Action(Action), // always true; irreducible unless after short-circuit AND/OR
@@ -34,8 +32,8 @@ impl std::fmt::Debug for Filter {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match &self {
             Filter::Anything => write!(f, "Anything"),
-            Filter::Name(regex) => write!(f, "Name({:?})", regex),
-            Filter::Path(regex) => write!(f, "Path({:?})", regex),
+            Filter::Name(pattern) => write!(f, "Name({:?})", pattern),
+            Filter::Path(pattern) => write!(f, "Path({:?})", pattern),
             Filter::Type(ftype) => write!(f, "Type({:?})", ftype),
             Filter::Action(action) => write!(f, "Action({:?})", action),
             Filter::Chain(chain) => write!(f, "{:?}", chain),
@@ -237,7 +235,7 @@ impl Chain {
 
     fn test_pattern(
         &self,
-        pattern: &Regex,
+        pattern: &Pattern,
         entry: &DirEntry,
         match_path: bool,
         match_full_path: bool,
@@ -246,7 +244,7 @@ impl Chain {
 
         if match_full_path {
             if let Ok(path_buf) = to_absolute_path(&entry_path) {
-                return pattern.is_match(path_buf.as_os_str().as_bytes());
+                return pattern.is_match(path_buf);
             } else {
                 die(&format!(
                     "could not get full path of {:?}",
@@ -254,10 +252,10 @@ impl Chain {
                 ));
             }
         } else if match_path {
-            return pattern.is_match(entry_path.as_os_str().as_bytes());
+            return pattern.is_match(entry_path);
         } else {
             if let Some(os_str) = entry_path.file_name() {
-                return pattern.is_match(os_str.as_bytes());
+                return pattern.is_match(os_str);
             }
         }
 

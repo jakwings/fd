@@ -3,8 +3,31 @@ use std::os::unix::ffi::OsStrExt;
 
 use super::regex::bytes::{Regex, RegexBuilder};
 
-use super::glob::GlobBuilder;
+use super::glob::{Glob, GlobBuilder};
 use super::internal::Error;
+
+pub enum Pattern {
+    Glob(Glob),
+    Regex(Regex),
+}
+
+impl std::fmt::Debug for Pattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match self {
+            Pattern::Glob(glob) => write!(f, "{:?}", glob),
+            Pattern::Regex(regex) => write!(f, "{:?}", regex.as_str()),
+        }
+    }
+}
+
+impl Pattern {
+    pub fn is_match(&self, path: impl AsRef<OsStr>) -> bool {
+        match self {
+            Pattern::Glob(glob) => glob.is_match(path),
+            Pattern::Regex(regex) => regex.is_match(path.as_ref().as_bytes()),
+        }
+    }
+}
 
 pub struct PatternBuilder {
     pattern: OsString,
@@ -25,7 +48,7 @@ impl PatternBuilder {
         }
     }
 
-    pub fn build(&self) -> Result<Regex, Error> {
+    pub fn build(&self) -> Result<Pattern, Error> {
         if self.use_regex {
             // XXX: strange conformance to UTF-8
             let pattern = if self.unicode {
@@ -45,6 +68,7 @@ impl PatternBuilder {
                 .case_insensitive(self.case_insensitive)
                 .dot_matches_new_line(true)
                 .build()
+                .map(|regex| Pattern::Regex(regex))
                 .map_err(|err| Error::from_str(&err.to_string()))
         } else {
             GlobBuilder::new(&self.pattern)
@@ -52,6 +76,7 @@ impl PatternBuilder {
                 .case_insensitive(self.case_insensitive)
                 .match_full_path(self.match_full_path)
                 .build()
+                .map(|glob| Pattern::Glob(glob))
         }
     }
 

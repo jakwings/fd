@@ -176,6 +176,8 @@ impl Chain {
         }
     }
 
+    // TODO: Dir(Pattern) = Type(Directory) & Path(Pattern) => Skip early for /**
+    //       Ext(EXT) = !Type((--follow symlink to) Directory) & Name(?*.EXT)
     pub fn apply(&self, entry: &DirEntry, config: &AppOptions) -> Vec<Action> {
         let mut actions = Vec::new();
 

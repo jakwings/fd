@@ -39,7 +39,7 @@ path = "src/globset/src/lib.rs"
 [dependencies]
 ansi_term = "0.11"
 atty = "0.2"
-clap = "2.32"
+clap = "2.33"
 ignore = "^0.4.4"
 lazy_static = "1"
 nix = "0.13"
@@ -61,7 +61,7 @@ tempfile = "3"
 glob = "0.3"
 
 [build-dependencies]
-clap = "2"
+clap = "2.33"
 
 [features]
 simd-accel = [ "regex/unstable" ]

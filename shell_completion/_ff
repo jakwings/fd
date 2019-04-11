@@ -15,6 +15,10 @@ _ff() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" \
+'*-D+[Add a starting point.]' \
+'*--include=[Add a starting point.]' \
+'*-E+[Remove a branch in directory trees.]' \
+'*--exclude=[Remove a branch in directory trees.]' \
 '-t+[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
 '--type=[Filter by type: d,directory, f,file, l,symlink, x,executable]' \
 '-d+[Set maximum search depth. \[default: unlimited\]]' \
@@ -30,8 +34,8 @@ _ff() {
 '--glob[Search with a glob pattern. \[default\]]' \
 '-r[Search with a regex pattern.]' \
 '--regex[Search with a regex pattern.]' \
-'-u[Match UTF-8 scalar values]' \
-'--unicode[Match UTF-8 scalar values]' \
+'-u[Match UTF-8 scalar values instead of bytes.]' \
+'--unicode[Match UTF-8 scalar values instead of bytes.]' \
 '-i[Case-insensitive search.]' \
 '--ignore-case[Case-insensitive search.]' \
 '-s[Case-sensitive search. \[default\]]' \

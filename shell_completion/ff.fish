@@ -1,3 +1,5 @@
+complete -c ff -n "__fish_use_subcommand" -s D -l include -d 'Add a starting point.'
+complete -c ff -n "__fish_use_subcommand" -s E -l exclude -d 'Remove a branch in directory trees.'
 complete -c ff -n "__fish_use_subcommand" -s t -l type -d 'Filter by type: d,directory, f,file, l,symlink, x,executable'
 complete -c ff -n "__fish_use_subcommand" -s d -l max-depth -d 'Set maximum search depth. [default: unlimited]'
 complete -c ff -n "__fish_use_subcommand" -s c -l color -d 'When to use colors: auto, never, always [default: auto]' -r -f -a "auto never always"
@@ -6,7 +8,7 @@ complete -c ff -n "__fish_use_subcommand" -l max-buffer-time -d 'Set time (in mi
 complete -c ff -n "__fish_use_subcommand" -s x -l exec -d 'Execute the given command for each search result.'
 complete -c ff -n "__fish_use_subcommand" -s g -l glob -d 'Search with a glob pattern. [default]'
 complete -c ff -n "__fish_use_subcommand" -s r -l regex -d 'Search with a regex pattern.'
-complete -c ff -n "__fish_use_subcommand" -s u -l unicode -d 'Match UTF-8 scalar values'
+complete -c ff -n "__fish_use_subcommand" -s u -l unicode -d 'Match UTF-8 scalar values instead of bytes.'
 complete -c ff -n "__fish_use_subcommand" -s i -l ignore-case -d 'Case-insensitive search.'
 complete -c ff -n "__fish_use_subcommand" -s s -l case-sensitive -d 'Case-sensitive search. [default]'
 complete -c ff -n "__fish_use_subcommand" -s p -l full-path -d 'Match the full path of a file.'

@@ -20,6 +20,10 @@ Register-ArgumentCompleter -Native -CommandName 'ff' -ScriptBlock {
 
     $completions = @(switch ($command) {
         'ff' {
+            [CompletionResult]::new('-D', 'D', [CompletionResultType]::ParameterName, 'Add a starting point.')
+            [CompletionResult]::new('--include', 'include', [CompletionResultType]::ParameterName, 'Add a starting point.')
+            [CompletionResult]::new('-E', 'E', [CompletionResultType]::ParameterName, 'Remove a branch in directory trees.')
+            [CompletionResult]::new('--exclude', 'exclude', [CompletionResultType]::ParameterName, 'Remove a branch in directory trees.')
             [CompletionResult]::new('-t', 't', [CompletionResultType]::ParameterName, 'Filter by type: d,directory, f,file, l,symlink, x,executable')
             [CompletionResult]::new('--type', 'type', [CompletionResultType]::ParameterName, 'Filter by type: d,directory, f,file, l,symlink, x,executable')
             [CompletionResult]::new('-d', 'd', [CompletionResultType]::ParameterName, 'Set maximum search depth. [default: unlimited]')
@@ -35,8 +39,8 @@ Register-ArgumentCompleter -Native -CommandName 'ff' -ScriptBlock {
             [CompletionResult]::new('--glob', 'glob', [CompletionResultType]::ParameterName, 'Search with a glob pattern. [default]')
             [CompletionResult]::new('-r', 'r', [CompletionResultType]::ParameterName, 'Search with a regex pattern.')
             [CompletionResult]::new('--regex', 'regex', [CompletionResultType]::ParameterName, 'Search with a regex pattern.')
-            [CompletionResult]::new('-u', 'u', [CompletionResultType]::ParameterName, 'Match UTF-8 scalar values')
-            [CompletionResult]::new('--unicode', 'unicode', [CompletionResultType]::ParameterName, 'Match UTF-8 scalar values')
+            [CompletionResult]::new('-u', 'u', [CompletionResultType]::ParameterName, 'Match UTF-8 scalar values instead of bytes.')
+            [CompletionResult]::new('--unicode', 'unicode', [CompletionResultType]::ParameterName, 'Match UTF-8 scalar values instead of bytes.')
             [CompletionResult]::new('-i', 'i', [CompletionResultType]::ParameterName, 'Case-insensitive search.')
             [CompletionResult]::new('--ignore-case', 'ignore-case', [CompletionResultType]::ParameterName, 'Case-insensitive search.')
             [CompletionResult]::new('-s', 's', [CompletionResultType]::ParameterName, 'Case-sensitive search. [default]')

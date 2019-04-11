@@ -59,6 +59,9 @@ ff / name c++ type directory,symlink \
 # ditto
 ff / name c++ and type directory,symlink \
      and not path '/usr/include/**' and not path '/usr/bin/**'
+# more efficient
+ff / name c++ and type directory,symlink \
+     --exclude /usr/include --exclude /usr/bin
 
 # likewise, "iname" means to case-insensitively match file names
 ff $HOME iname '*.chm' or iname '*.pdf' or iname '*.epub'
@@ -66,13 +69,38 @@ ff $HOME iname '*.chm' or iname '*.pdf' or iname '*.epub'
 ff $HOME iname '*.{chm,pdf,epub}'
 ```
 
+## References
+
+*   Glob Syntax: https://docs.rs/ff-find/latest/globset/#syntax
+    *   Note: ff uses a variant of [globset][glob] which behaves slightly differently
+        for "backslash escape", i.e. `\<char>` drops the `\` and removes special
+        effect of a character ANYWHERE.
+*   Regex Syntax: https://docs.rs/regex/1.1.2/regex/#syntax
+
+Please note that the nitty-gritty of supported syntax may change in the future.
+There are still some todos noted in the source code.
+
+[glob]: https://docs.rs/globset/latest/globset/#syntax
+
 ## Help
 
 ```
 USAGE:
-    ff [OPTIONS] [<DIRECTORY> [PATTERN | FILTER CHAIN]]
+    ff [OPTIONS] [<STARTING POINT> [PATTERN | FILTER CHAIN]]
 
 OPTIONS:
+    -D, --include <path>...
+            Search one more directory or file.
+
+            This option can be specified multiple times. Duplicated paths
+            produce duplicated results.
+
+    -E, --exclude <path>...
+            Skip the file or do not descend into the directory.
+
+            This option can be specified multiple times. File paths are compared
+            without resorting to absolute paths nor real paths.
+
     -g, --glob
             Match file paths with a glob pattern.
             This is the default behavior.
@@ -205,7 +233,7 @@ OPTIONS:
 
 
 ARGS:
-    <DIRECTORY>
+    <STARTING POINT>
             The root directory for the search. [optional]
             If omitted, search the current working directory.
 
@@ -220,19 +248,24 @@ ARGS:
 
                 * Grouped expression:
                     "(" expr ")"
+
                 * Negated expression:
                     "NOT" expr
                     "!" expr
+
                 * Both expr1 and expr2 are true:
                     expr1 "AND" expr2
                     expr1 expr2
                   expr2 is not evaluated if expr1 is false.
+
                 * One and only one of expr1 and expr2 is true:
                     expr1 "XOR" expr2
                   Both expressions are evaluated.
+
                 * At least one of expr1 and expr2 is true:
                     expr1 "OR" expr2
                   expr2 is not evaluated if expr1 is true.
+
                 * Only return the value of expr2:
                     expr1 "," expr2
                   Both expressions are evaluated.
@@ -242,29 +275,52 @@ ARGS:
               Expressions (unchained):
 
                 * Perform a case-sensitive match on file names.
-                  name <glob pattern>
+                    name <glob pattern>
+                  This action is not affected by --full-path.
+
                 * Perform a case-insensitive match on file names.
-                  iname <glob pattern>
-                * Perform a case-sensitive match on (relative) file paths.
-                  path <glob pattern>
-                  regex <regex pattern>
-                * Perform a case-insensitive match on (relative) file paths.
-                  ipath <glob pattern>
-                  iregex <regex pattern>
+                    iname <glob pattern>
+                  This action is not affected by --full-path.
+
+                * Perform a case-sensitive match on file paths.
+                    path <glob pattern>
+                    regex <regex pattern>
+                  Relative paths always start with "./" or "../".
+
+                * Perform a case-insensitive match on file paths.
+                    ipath <glob pattern>
+                    iregex <regex pattern>
+                  Relative paths always start with "./" or "../".
+
                 * Match specified file types.
-                  type <file type[,file type]...>
+                    type <file type[,file type]...>
+
                 * Always true.
-                  true
+                    true
+
                 * Always false.
-                  false
+                    false
+
                 * Always true; print the result followed by a newline.
-                  print
+                    print
+
                 * Always true; print the result followed by a NUL character.
-                  print0
+                    print0
+
+                * Always true; do not descend into a directory.
+                    prune
+                  This does not cancel other applied actions.
+
+                * Always true; quit searching after applying other actions.
+                    quit
+                  More results can be procuded while this action is accepted.
+                  To make the results predictable, use --sort-path --threads=1.
 
               The head of a predicate is case-insensitive.
 
-            "print" and "print0" are both predicates and actions.
+            These predicates are also "actions" due to their side effects:
+
+              print, print0, prune, quit.
 
             If no action is specified in the filter chain, all matched results
             are printed on the standard output with the line terminator
@@ -279,21 +335,6 @@ NOTE: If the value of environment variable PWD is the path of a symlink pointing
 to the current working directory, it is used for resolving the absolute path of
 a relative path.
 ```
-
-
-## References
-
-*   Glob Syntax: https://docs.rs/ff-find/latest/globset/#syntax
-    *   Note: ff uses a variant of [globset][glob] which behaves slightly differently
-        for "backslash escape", i.e. `\<char>` drops the `\` and removes special
-        effect of a character ANYWHERE.
-*   Regex Syntax: https://docs.rs/regex/1.1.2/regex/#syntax
-
-Please note that the nitty-gritty of supported syntax may change in the future.
-There are still some todos noted in the source code.
-
-[glob]: https://docs.rs/globset/latest/globset/#syntax
-
 
 ## License
 

@@ -47,7 +47,7 @@ fn exit_if_sigint(quitting: &Arc<AtomicUsize>) {
 
 fn calc_send_threads(threads: usize, sort_path: bool) -> usize {
     if sort_path {
-        threads - 1 // minus receiver thread
+        (threads - 1).max(1) // minus receiver thread
     } else if threads > 1 {
         (threads / 2).max(2)
     } else {

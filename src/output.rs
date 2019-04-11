@@ -42,16 +42,7 @@ fn print_entry_colorized(entry: Entry, palette: &LsColors) -> io::Result<()> {
             .write_to(&mut buffer)?;
     }
 
-    for action in entry.1 {
-        match action {
-            Action::Print => add_path_terminator(&mut buffer, false),
-            Action::Print0 => add_path_terminator(&mut buffer, true),
-        }
-        io::stdout().write_all(buffer.as_slice())?;
-        buffer.pop();
-    }
-
-    Ok(())
+    execute_actions(entry, buffer)
 }
 
 fn print_entry_uncolorized(entry: Entry) -> io::Result<()> {
@@ -59,13 +50,18 @@ fn print_entry_uncolorized(entry: Entry) -> io::Result<()> {
 
     buffer.write(entry.0.as_os_str().as_bytes())?;
 
+    execute_actions(entry, buffer)
+}
+
+fn execute_actions(entry: Entry, mut buffer: Vec<u8>) -> io::Result<()> {
     for action in entry.1 {
         match action {
             Action::Print => add_path_terminator(&mut buffer, false),
             Action::Print0 => add_path_terminator(&mut buffer, true),
+            _ => continue,
         }
         io::stdout().write_all(buffer.as_slice())?;
-        buffer.pop();
+        buffer.pop(); // drop terminator
     }
 
     Ok(())

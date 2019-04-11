@@ -15,6 +15,7 @@ use super::signal_hook;
 
 use super::counter::Counter;
 use super::exec;
+use super::filter::Action;
 use super::internal::{die, error, warn, AppOptions};
 use super::output;
 
@@ -207,10 +208,20 @@ fn spawn_sender_threads(
             let actions = config.filter.apply(&entry, &config);
 
             if !actions.is_empty() {
+                let state = if actions.contains(&Action::Quit) {
+                    WalkState::Quit
+                } else if actions.contains(&Action::Prune) {
+                    WalkState::Skip
+                } else {
+                    WalkState::Continue
+                };
+
                 if tx.send((entry.path.to_owned(), actions)).is_err() {
                     error("sender thread failed to send data");
                     return WalkState::Quit;
                 }
+
+                return state;
             }
 
             WalkState::Continue

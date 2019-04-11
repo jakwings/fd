@@ -16,6 +16,8 @@ use super::*;
 // * regex <regex pattern>  # match the absolute/relative path, e.g. regex '/[^/]*\.rs$'
 // * iregex <regex pattern>
 // * type <file type[,file type]...>
+// * prune                  # skip a file or do not descend into a directory
+// * quit                   # stop searching but not instantly due to multi-threading
 // * true
 // * false
 // * print                  # unaffected by the --print0 flag
@@ -132,6 +134,8 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
         }
     }
 
+    // TODO: Dir(Pattern) = Type(Directory) & Path(Pattern)
+    //       Ext(EXT) = Name(?*.EXT)
     fn parse_predicate(&mut self, depth: u8, token: &'a OsStr) -> Result<Chain, Error> {
         macro_rules! tok (($($anything:tt)+) => ({
             self.tokens.push(Token::Txt(token));
@@ -172,6 +176,8 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
                 b"false" => tok!(Ok(Chain::new(Filter::Anything, true))),
                 b"print" => tok!(Ok(Chain::new(Filter::Action(Action::Print), false))),
                 b"print0" => tok!(Ok(Chain::new(Filter::Action(Action::Print0), false))),
+                b"prune" => tok!(Ok(Chain::new(Filter::Action(Action::Prune), false))),
+                b"quit" => tok!(Ok(Chain::new(Filter::Action(Action::Quit), false))),
                 _ => tok!(Err(Error::from_str(&format!(
                     "found unrecognized predicate {:?}",
                     token

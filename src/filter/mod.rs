@@ -10,11 +10,13 @@ use super::walk::DirEntry;
 
 pub use self::filetype::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     // TODO: FPrint(PathBuf), FPrint0(PathBuf), FdPrint(RawFd), FdPrint0(RawFd), ...
     Print,
     Print0,
+    Prune,
+    Quit,
 }
 
 pub enum Filter {
@@ -176,8 +178,6 @@ impl Chain {
         }
     }
 
-    // TODO: Dir(Pattern) = Type(Directory) & Path(Pattern) => Skip early for /**
-    //       Ext(EXT) = !Type((--follow symlink to) Directory) & Name(?*.EXT)
     pub fn apply(&self, entry: &DirEntry, config: &AppOptions) -> Vec<Action> {
         let mut actions = Vec::new();
 

@@ -78,6 +78,7 @@ pub fn build() -> App<'static, 'static> {
             arg("ignore-case")
                 .long("ignore-case")
                 .short("i")
+                .alias("case-insensitive")
                 .overrides_with("case-sensitive"),
         )
         .arg(

@@ -30,6 +30,7 @@ lazy_static! {
 
 pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
     // TODO: Provide a flag --real-path for canonicalization of file path?
+    //       Match real paths and/or output real paths? (affect --include and --exclude?)
     //       Logical: resolve '..' components before symlinks (Windows)
     //       Physical: resolve symlinks as encountered (Unix)
     // NOTE: A path like /root/../compo is considered an absolute path, seriously.
@@ -50,14 +51,10 @@ pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
     }
 }
 
-// Path::is_dir() is not guarandteed to be intuitively correct for "." and ".."
+// Path::exists() and Path::is_dir() do not behave intuitively "." and ".."
 // See: https://github.com/rust-lang/rust/issues/45302
-pub fn is_dir(path: &Path) -> bool {
-    if path.file_name().is_some() {
-        path.is_dir()
-    } else {
-        path.is_dir() && path.canonicalize().is_ok()
-    }
+pub fn exists(path: &Path) -> bool {
+    path.canonicalize().is_ok()
 }
 
 // Only check whether the executable bits are set.

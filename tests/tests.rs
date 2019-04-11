@@ -39,6 +39,26 @@ fn test_simple() {
          ./symlink
          ./symlink2",
     );
+
+    env.assert_output(
+        true,
+        &["./"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(true, &["a.foo"], "./a.foo");
 }
 
 #[test]
@@ -818,6 +838,170 @@ fn test_exec() {
 }
 
 #[test]
+fn test_include_dirs() {
+    let env = TestEnv::new();
+
+    env.assert_output(
+        true,
+        &["--include", "."],
+        "./a.foo
+         ./a.foo
+         ./α β
+         ./α β
+         ./one
+         ./one
+         ./one.two
+         ./one.two
+         ./one/b.foo
+         ./one/b.foo
+         ./one/two
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink
+         ./symlink2
+         ./symlink2",
+    );
+
+    let abs_path = get_test_root(&env);
+
+    env.assert_output(
+        true,
+        &["--include", &abs_path],
+        &format!(
+            "./a.foo
+             ./α β
+             ./one
+             ./one.two
+             ./one/b.foo
+             ./one/two
+             ./one/two/C.Foo2
+             ./one/two/c.foo
+             ./one/two/three
+             ./one/two/three/d.foo
+             ./one/two/three/directory_foo
+             ./symlink
+             ./symlink2
+             {abs_path}/a.foo
+             {abs_path}/α β
+             {abs_path}/one
+             {abs_path}/one.two
+             {abs_path}/one/b.foo
+             {abs_path}/one/two
+             {abs_path}/one/two/C.Foo2
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo
+             {abs_path}/symlink
+             {abs_path}/symlink2",
+            abs_path = abs_path
+        ),
+    );
+
+    env.assert_output(
+        true,
+        &[&abs_path, "--include", "."],
+        &format!(
+            "./a.foo
+             ./α β
+             ./one
+             ./one.two
+             ./one/b.foo
+             ./one/two
+             ./one/two/C.Foo2
+             ./one/two/c.foo
+             ./one/two/three
+             ./one/two/three/d.foo
+             ./one/two/three/directory_foo
+             ./symlink
+             ./symlink2
+             {abs_path}/a.foo
+             {abs_path}/α β
+             {abs_path}/one
+             {abs_path}/one.two
+             {abs_path}/one/b.foo
+             {abs_path}/one/two
+             {abs_path}/one/two/C.Foo2
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo
+             {abs_path}/symlink
+             {abs_path}/symlink2",
+            abs_path = abs_path
+        ),
+    );
+}
+
+#[test]
+fn test_exclude_dirs() {
+    let env = TestEnv::new();
+
+    env.assert_output(
+        true,
+        &["--exclude", "one/two"],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./symlink
+         ./symlink2",
+    );
+
+    let abs_path = get_test_root(&env);
+
+    env.assert_output(
+        true,
+        &[&abs_path, "--exclude", "one/two"],
+        &format!(
+            "{abs_path}/a.foo
+             {abs_path}/α β
+             {abs_path}/one
+             {abs_path}/one.two
+             {abs_path}/one/b.foo
+             {abs_path}/one/two
+             {abs_path}/one/two/C.Foo2
+             {abs_path}/one/two/c.foo
+             {abs_path}/one/two/three
+             {abs_path}/one/two/three/d.foo
+             {abs_path}/one/two/three/directory_foo
+             {abs_path}/symlink
+             {abs_path}/symlink2",
+            abs_path = abs_path
+        ),
+    );
+
+    env.assert_output(
+        true,
+        &["--exclude", &format!("{}/one/two", abs_path)],
+        "./a.foo
+         ./α β
+         ./one
+         ./one.two
+         ./one/b.foo
+         ./one/two
+         ./one/two/C.Foo2
+         ./one/two/c.foo
+         ./one/two/three
+         ./one/two/three/d.foo
+         ./one/two/three/directory_foo
+         ./symlink
+         ./symlink2",
+    );
+}
+
+#[test]
 fn test_filter_chain() {
     let env = TestEnv::new();
 
@@ -1043,6 +1227,16 @@ fn test_filter_chain() {
         "./a.foo
          ./α β
          ./one
+         ./one.two
+         ./symlink
+         ./symlink2",
+    );
+
+    env.assert_output(
+        true,
+        &[".", "name", "one", "prune", "print", "or", "print", "-Eone"],
+        "./a.foo
+         ./α β
          ./one.two
          ./symlink
          ./symlink2",

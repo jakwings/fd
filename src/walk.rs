@@ -137,8 +137,14 @@ fn spawn_sender_threads(
     config: Arc<AppOptions>,
     quitting: Arc<AtomicUsize>,
 ) {
-    let threads = calc_send_threads(config.threads, config.sort_path);
-    let walker = WalkBuilder::new(&config.root)
+    let mut builder = WalkBuilder::new(&config.includes[0]);
+
+    // do not check duplicates, relative/absolute paths nor real paths
+    for path in config.includes.split_first().unwrap().1 {
+        builder.add(path);
+    }
+
+    let walker = builder
         .hidden(!config.dot_files)
         .ignore(config.read_ignore)
         .git_ignore(config.read_ignore)
@@ -148,7 +154,7 @@ fn spawn_sender_threads(
         .same_file_system(config.same_file_system)
         .follow_links(config.follow_symlink)
         .max_depth(config.max_depth)
-        .threads(threads)
+        .threads(calc_send_threads(config.threads, config.sort_path))
         // the non-parallel version can output first few sorted results earlier
         // and make less buffering but the total time used is 4 times longer
         .build_parallel();
@@ -166,10 +172,12 @@ fn spawn_sender_threads(
                 return WalkState::Quit;
             }
 
-            // https://docs.rs/walkdir/2.2.6/walkdir/struct.DirEntry.html
+            // https://docs.rs/ignore/0.4.6/ignore/struct.DirEntry.html
             let entry = match entry_o {
                 Ok(ref entry) => {
-                    if entry.depth() != 0 {
+                    // TODO: breaking change: include root dir
+                    // will traverse symlinks
+                    if entry.depth() != 0 || !entry.path().is_dir() {
                         DirEntry {
                             path: entry.path(),
                             file_type: entry.file_type(),
@@ -204,6 +212,13 @@ fn spawn_sender_threads(
                     }
                 }
             };
+
+            // do not check duplicates, relative/absolute paths nor real paths
+            for path in &config.excludes {
+                if entry.path == path {
+                    return WalkState::Skip;
+                }
+            }
 
             let actions = config.filter.apply(&entry, &config);
 

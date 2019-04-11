@@ -23,46 +23,70 @@ mod output;
 mod pattern;
 mod walk;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use self::exec::ExecTemplate;
 use self::filter::{Chain as FilterChain, FileType, Filter};
-use self::fshelper::{is_dir, to_absolute_path};
+use self::fshelper::{exists, to_absolute_path};
 use self::internal::{die, int_error, int_error_os, AppOptions};
 use self::lscolors::LsColors;
 use self::pattern::PatternBuilder;
 
+fn normalize(path: impl AsRef<Path>) -> PathBuf {
+    let path = path.as_ref();
+    let os_str = path.as_os_str();
+
+    if os_str.is_empty() {
+        die(&format!("{:?} is not a file or directory", os_str));
+    } else if path.is_relative() && !(path.starts_with(".") || path.starts_with("..")) {
+        PathBuf::from(".").join(path)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 fn main() {
     let args = app::build().get_matches();
 
+    let absolute = args.is_present("absolute-path");
+
     let current_dir = PathBuf::from(".");
-    if !is_dir(&current_dir) {
-        die("could not get current directory");
+    let mut root_dirs = Vec::with_capacity(1);
+
+    match args.value_of_os("DIRECTORY") {
+        Some(os_str) => root_dirs.push(normalize(os_str)),
+        None => root_dirs.push(current_dir.clone()),
     }
 
-    let mut root_dir = match args.value_of_os("DIRECTORY") {
-        Some(path_str) => {
-            let path = PathBuf::from(path_str);
-            if !path_str.is_empty()
-                && path.is_relative()
-                && !(path.starts_with(".") || path.starts_with(".."))
-            {
-                PathBuf::from(".").join(path)
+    args.values_of_os("include").map(|values| {
+        root_dirs.append(&mut values.map(normalize).collect());
+    });
+
+    root_dirs.iter_mut().for_each(|dir| {
+        if !exists(dir) {
+            if *dir == current_dir {
+                die("could not get current directory")
             } else {
-                path
+                die(&format!("{:?} is not a file or directory", dir.as_os_str()));
             }
+        } else if absolute {
+            *dir = to_absolute_path(dir).unwrap_or_else(|err| die(&err));
         }
-        None => current_dir.clone(),
-    };
-    if !is_dir(&root_dir) {
-        die(&format!("{:?} is not a directory", root_dir.as_os_str()));
-    }
+    });
 
-    let absolute = args.is_present("absolute-path") || root_dir.is_absolute();
+    let mut pruned_dirs = Vec::new();
 
-    if absolute && root_dir.is_relative() {
-        root_dir = to_absolute_path(&root_dir).unwrap();
+    args.values_of_os("exclude").map(|values| {
+        pruned_dirs.append(&mut values.map(normalize).collect());
+    });
+    pruned_dirs.sort_unstable();
+    pruned_dirs.dedup();
+
+    if absolute {
+        for dir in pruned_dirs.iter_mut() {
+            *dir = to_absolute_path(dir).unwrap_or_else(|err| die(&err));
+        }
     }
 
     let file_type = args
@@ -146,14 +170,14 @@ fn main() {
         follow_symlink: args.is_present("follow-symlink"),
         same_file_system: args.is_present("same-file-system"),
         null_terminator: args.is_present("null-terminator"),
-        root: root_dir,
+        includes: root_dirs,
+        excludes: pruned_dirs,
         filter: FilterChain::new(Filter::Anything, false),
         command: command,
         palette: palette,
         max_buffer_time: max_buffer_time,
         max_depth: max_depth,
         threads: num_thread,
-        absolute_path: absolute,
     };
 
     let pattern = args.values_of_os("PATTERN").as_mut().map(|values| {

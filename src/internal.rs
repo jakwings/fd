@@ -45,9 +45,6 @@ pub struct AppOptions {
     // Whether to match the absolute path or just the base name.
     pub match_full_path: bool,
 
-    // Whether the search results are absolute paths.
-    pub absolute_path: bool,
-
     // Whether the search results are sorted by pathname.
     pub sort_path: bool,
 
@@ -80,8 +77,11 @@ pub struct AppOptions {
     // The amount of time for buffering and sorting before streaming the search results.
     pub max_buffer_time: Option<u64>, // milliseconds
 
-    // The root directory used for searching.
-    pub root: PathBuf,
+    // The starting points for searching.
+    pub includes: Vec<PathBuf>,
+
+    // The branches what will be pruned while searching.
+    pub excludes: Vec<PathBuf>,
 
     // The filter for matching file paths.
     pub filter: FilterChain,

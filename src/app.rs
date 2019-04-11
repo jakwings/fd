@@ -49,7 +49,7 @@ pub fn build() -> App<'static, 'static> {
         .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
         .version_message("Print version information.")
-        .usage("ff [OPTIONS] [<DIRECTORY> [PATTERN | FILTER CHAIN]]")
+        .usage("ff [OPTIONS] [<STARTING POINT> [PATTERN | FILTER CHAIN]]")
         .about("A simple and fast utility for file search on Unix commandline.")
         .help_message(
             "Print help information.\n\
@@ -59,6 +59,22 @@ pub fn build() -> App<'static, 'static> {
             "NOTE: If the value of environment variable PWD \
              is the path of a symlink pointing to the current working directory, \
              it is used for resolving the absolute path of a relative path.",
+        )
+        .arg(
+            arg("include")
+                .long("include")
+                .short("D")
+                .number_of_values(1)
+                .value_name("path")
+                .multiple(true),
+        )
+        .arg(
+            arg("exclude")
+                .long("exclude")
+                .short("E")
+                .number_of_values(1)
+                .value_name("path")
+                .multiple(true),
         )
         .arg(
             arg("use-glob")
@@ -185,8 +201,8 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg("verbose").long("verbose").short("v"))
         .arg(
             arg("DIRECTORY")
+                .value_name("STARTING POINT")
                 .default_value(".")
-                .empty_values(false)
                 .next_line_help(true),
         )
         .arg(
@@ -204,8 +220,28 @@ fn get_help() -> HashMap<&'static str, Help> {
 
     doc!(
         help,
+        "include",
+        "Add a starting point.",
+        "Search one more directory or file.\n\
+         \n\
+         This option can be specified multiple times. \
+         Duplicated paths produce duplicated results."
+    );
+
+    doc!(
+        help,
+        "exclude",
+        "Remove a branch in directory trees.",
+        "Skip the file or do not descend into the directory.\n\
+         \n\
+         This option can be specified multiple times. \
+         File paths are compared without resorting to absolute paths nor real paths."
+    );
+
+    doc!(
+        help,
         "unicode",
-        "Match UTF-8 scalar values",
+        "Match UTF-8 scalar values instead of bytes.",
         "Turn on Unicode support for search patterns.\n\
          \n\
          Character classes are not limited to ASCII. \

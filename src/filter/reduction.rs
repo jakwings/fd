@@ -122,8 +122,9 @@ fn merge_links(links: &mut Vec<Link>, link: Link) -> bool {
                     .iter()
                     .all(|link| link.joint == Joint::Or)
                 {
-                    links.push(Link::new(joint, Filter::Anything, negated ^ chain.negated));
-                    None
+                    chain.links.truncate(true1st);
+
+                    merge_singleton_link(links, joint, negated, chain)
                 } else {
                     Some(Link::new(joint, Filter::Chain(chain), negated))
                 }

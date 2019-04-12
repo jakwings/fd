@@ -153,7 +153,9 @@ pub fn build() -> App<'static, 'static> {
                 .long("type")
                 .short("t")
                 .takes_value(true)
-                .value_name("filetype")
+                .use_delimiter(true)
+                .value_delimiter(",")
+                .value_name("file type")
                 .hidden_short_help(true),
         )
         .arg(
@@ -371,6 +373,9 @@ fn get_help() -> HashMap<&'static str, Help> {
             "         file or f: regular files\n",
             "      symlink or l: symbolic links\n",
             "   executable or x: executable files\n",
+            "\n",
+            "Multiple file types are specified by separating them with a comma \",\". \
+             Files of any of those types are matched.\n",
             "\n",
             "Executable files are regular files with execute permission bits set \
              or are symlinks pointing to the former, which means they are likely \

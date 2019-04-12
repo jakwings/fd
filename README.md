@@ -172,13 +172,16 @@ OPTIONS:
             Interactive input is disabled by caching, even if the commands run
             sequentially.
 
-    -t, --type <filetype>
+    -t, --type <file type>
             Filter the search by type (case-insensitive): [default: any]
 
                 directory or d: directories
                      file or f: regular files
                   symlink or l: symbolic links
                executable or x: executable files
+
+            Multiple file types are specified by separating them with a comma
+            ",". Files of any of those types are matched.
 
             Executable files are regular files with execute permission bits set
             or are symlinks pointing to the former, which means they are likely

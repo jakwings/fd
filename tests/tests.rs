@@ -620,6 +620,14 @@ fn test_type() {
     );
 
     env.assert_output(true, &["--type", "x"], "./a.foo");
+
+    env.assert_output(
+        true,
+        &["--type", "x,l"],
+        "./a.foo
+         ./symlink
+         ./symlink2",
+    );
 }
 
 #[test]

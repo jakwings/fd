@@ -89,10 +89,6 @@ fn main() {
         }
     }
 
-    let file_type = args
-        .value_of_os("file-type")
-        .map(|symbol| FileType::from_str(&symbol).unwrap_or_else(|err| die(&err)));
-
     let max_depth = args
         .value_of("max-depth")
         .map(|num_str| match usize::from_str_radix(num_str, 10) {
@@ -172,13 +168,21 @@ fn main() {
         null_terminator: args.is_present("null-terminator"),
         includes: root_dirs,
         excludes: pruned_dirs,
-        filter: FilterChain::new(Filter::Anything, false),
+        filter: FilterChain::default(),
         command: command,
         palette: palette,
         max_buffer_time: max_buffer_time,
         max_depth: max_depth,
         threads: num_thread,
     };
+
+    let file_type = args.values_of_os("file-type").map(|values| {
+        values.fold(FilterChain::default().not(), |chain, value| {
+            let ftype = FileType::from_str(value).unwrap_or_else(|err| die(&err));
+
+            chain.and(Filter::Type(ftype), true)
+        })
+    });
 
     let pattern = args.values_of_os("PATTERN").as_mut().map(|values| {
         if args.occurrences_of("PATTERN") == 1 {
@@ -209,11 +213,11 @@ fn main() {
         }
     });
 
-    if let Some(file_type) = file_type {
-        config.filter = config.filter.and(Filter::Type(file_type), false);
+    if let Some(chain) = file_type {
+        config.filter = config.filter.and(Filter::Chain(chain), false);
     }
-    if let Some(pattern) = pattern {
-        config.filter = config.filter.and(Filter::Chain(pattern), false);
+    if let Some(chain) = pattern {
+        config.filter = config.filter.and(Filter::Chain(chain), false);
     }
     config.filter = FilterChain::reduce(config.filter);
 

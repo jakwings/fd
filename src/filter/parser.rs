@@ -16,7 +16,7 @@ use super::*;
 // * regex <regex pattern>  # match the absolute/relative path, e.g. regex '/[^/]*\.rs$'
 // * iregex <regex pattern>
 // * type <file type[,file type]...>
-// * prune                  # skip a file or do not descend into a directory
+// * prune                  # do not descend into a directory
 // * quit                   # stop searching but not instantly due to multi-threading
 // * true
 // * false

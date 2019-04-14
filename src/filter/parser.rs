@@ -134,7 +134,7 @@ impl<'a, Iter: Iterator<Item = &'a OsStr>> Parser<'a, Iter> {
         }
     }
 
-    // TODO: Dir(Pattern) = Type(Directory) & Path(Pattern)
+    // IDEA: Dir(Pattern) = Type(Directory) & Path(Pattern)
     //       Ext(EXT) = Name(?*.EXT)
     fn parse_predicate(&mut self, depth: u8, token: &'a OsStr) -> Result<Chain, Error> {
         macro_rules! tok (($($anything:tt)+) => ({

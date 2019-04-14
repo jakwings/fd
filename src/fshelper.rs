@@ -29,7 +29,7 @@ lazy_static! {
 }
 
 pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
-    // TODO: Provide a flag --real-path for canonicalization of file path?
+    // IDEA: Provide a flag --real-path for canonicalization of file path?
     //       Match real paths and/or output real paths? (affect --include and --exclude?)
     //       Logical: resolve '..' components before symlinks (Windows)
     //       Physical: resolve symlinks as encountered (Unix)

@@ -87,7 +87,7 @@ fn check_path(path: &Vec<u8>, null_terminated: bool) {
             OsStr::new("\0")
         ));
     }
-    // TODO: option for turning off warnings?
+    // IDEA: option for turning off warnings?
     // reminder for poor scripts
     if !null_terminated && path.contains(&b'\n') {
         warn(&format!(

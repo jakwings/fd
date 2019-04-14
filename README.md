@@ -317,7 +317,6 @@ ARGS:
                 * Always true; quit searching after applying other actions.
                     quit
                   More results can be produced while this action is accepted.
-                  To make the results predictable, use --sort-path --threads=1.
 
               The head of a predicate is case-insensitive.
 

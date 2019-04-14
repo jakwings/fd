@@ -538,7 +538,6 @@ fn get_help() -> HashMap<&'static str, Help> {
             "    * Always true; quit searching after applying other actions.\n",
             "        quit\n",
             "      More results can be produced while this action is accepted.\n",
-            "      To make the results predictable, use --sort-path --threads=1.\n",
             "\n",
             "  The head of a predicate is case-insensitive.\n",
             "\n",

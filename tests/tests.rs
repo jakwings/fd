@@ -1252,10 +1252,4 @@ fn test_filter_chain() {
 
     // hard to test due to multi-threading
     env.assert_output(true, &[".", "quit", "or", "print"], "");
-
-    env.assert_output(
-        true,
-        &["-Sj1", ".", "name", "one", "quit", "or", "print"],
-        "./a.foo",
-    );
 }

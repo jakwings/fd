@@ -51,7 +51,7 @@ pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
     }
 }
 
-// Path::exists() and Path::is_dir() do not behave intuitively "." and ".."
+// Path::exists() and Path::is_dir() do not behave intuitively for "." and ".."
 // See: https://github.com/rust-lang/rust/issues/45302
 pub fn exists(path: &Path) -> bool {
     path.canonicalize().is_ok()

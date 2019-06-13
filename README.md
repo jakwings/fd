@@ -44,10 +44,10 @@ prevent deletion for files on it:
 
 ```bash
 # skip any directory or files on another disk or partition
-ff $HOME .DS_Store --mount --exec rm -v --
+ff $HOME .DS_Store --all --no-ignore --mount --exec rm -v --
 
 # could be faster by working in parallel with xargs
-ff $HOME .DS_Store --mount -0 | xargs -0 rm -v --
+ff $HOME .DS_Store --all --no-ignore --mount -0 | xargs -0 rm -v --
 ```
 
 To exclude arbitrary directories or files, try the advanced features:

@@ -38,9 +38,9 @@ pub fn to_absolute_path(path: &Path) -> io::Result<PathBuf> {
     if path.is_absolute() {
         Ok(path.to_path_buf())
     } else {
-        let path = path.strip_prefix(".").unwrap_or(path);
-
         if *HAS_PWD {
+            let path = path.strip_prefix(".").unwrap_or(path);
+
             Ok((*PWD).join(path))
         } else {
             Err(io::Error::new(

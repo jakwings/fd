@@ -61,7 +61,7 @@ impl PatternBuilder {
                     .ok_or(Error::from_str("invalid UTF-8 byte sequences found"))?
             };
 
-            //      (?u)π or (?u:π) doesn't match π without --unicode?
+            // XXX: (?u)π or (?u:π) doesn't match π without --unicode?
             //      (?-u:π) is not allowed with --unicode?
             RegexBuilder::new(&pattern)
                 .unicode(self.unicode)

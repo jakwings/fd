@@ -118,7 +118,7 @@ fn spawn_receiver_threads(
             let cmd = Arc::clone(&cmd);
             let input = Arc::clone(&input);
             let quitting = Arc::clone(&quitting);
-            let mut counter = Counter::new(MAX_CNT / threads, Some(quitting));
+            let counter = Counter::new(MAX_CNT / threads, Some(quitting));
             let handle = thread::spawn(move || {
                 exec::schedule(counter, rx, cmd, input, no_stdin, cache_output);
             });
@@ -175,7 +175,7 @@ fn spawn_sender_threads(
             // https://docs.rs/ignore/0.4.6/ignore/struct.DirEntry.html
             let entry = match entry_o {
                 Ok(ref entry) => {
-                    // TODO: breaking change: include root dir
+                    // IDEA: breaking change: include root dir?
                     // will traverse symlinks
                     if entry.depth() != 0 || !entry.path().is_dir() {
                         DirEntry {
@@ -187,7 +187,7 @@ fn spawn_sender_threads(
                     }
                 }
                 Err(ref err) => {
-                    let mut broken_symlink = None;
+                    let mut problematic_entry = None;
 
                     // https://docs.rs/walkdir/2.2.6/walkdir/struct.WalkDir.html#method.follow_links
                     // > If a symbolic link is broken or is involved in a loop, an error is yielded.
@@ -197,24 +197,31 @@ fn spawn_sender_threads(
                                 path.symlink_metadata().map(|meta| meta.file_type()).ok();
 
                             // Other than symlinks, what may not exist?
-                            broken_symlink = Some(DirEntry { path, file_type });
+                            problematic_entry = Some(DirEntry { path, file_type });
                         }
+                        // FIXME: mkdir -m 000 entrance
                     }
-                    if broken_symlink.is_some() {
-                        broken_symlink.unwrap()
+
+                    if problematic_entry.is_some() {
+                        problematic_entry.unwrap()
                     } else {
                         if !err.is_partial() || config.verbose {
                             // TODO: need to suppress some warnings from deps
                             //       mkdir -m 000 entrance
                             warn(&err);
                         }
-                        return WalkState::Skip;
+                        if err.is_partial() {
+                            return WalkState::Continue;
+                        } else {
+                            return WalkState::Skip;
+                        }
                     }
                 }
             };
 
             // do not check duplicates, relative/absolute paths nor real paths
             for path in &config.excludes {
+                // TODO: patch regex/globset and allow new(OsStr)
                 if entry.path == path {
                     return WalkState::Skip;
                 }

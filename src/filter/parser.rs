@@ -1,7 +1,8 @@
 use super::*;
 
 // Operator in order of decreasing precedence:
-// * "(" expression ")" , "NOT" expression , "!" expression
+// * "(" expression ")"
+// * "NOT" expression , "!" expression
 // * expression "AND" expression , expression expression
 // * expression "XOR" expression
 // * expression "OR"  expression

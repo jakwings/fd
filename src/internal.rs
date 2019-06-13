@@ -102,11 +102,20 @@ pub fn die(message: &(impl Display + ?Sized)) -> ! {
 }
 
 pub fn error(message: &(impl Display + ?Sized)) {
+    let stdout = ::std::io::stdout();
+    let lock = stdout.lock();
+
     writeln!(&mut ::std::io::stderr(), "[ff::Error] {}", message).expect("write to stderr");
+    drop(lock);
 }
 
 pub fn warn(message: &(impl Display + ?Sized)) {
+    // XXX: assume both stdout & stderr point to the same file
+    let stdout = ::std::io::stdout();
+    let lock = stdout.lock();
+
     writeln!(&mut ::std::io::stderr(), "[ff::Warning] {}", message).expect("write to stderr");
+    drop(lock);
 }
 
 pub fn int_error(name: &str, num_str: &str, message: &(impl Display + ?Sized)) -> ! {

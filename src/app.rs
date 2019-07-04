@@ -549,7 +549,9 @@ fn get_help() -> HashMap<&'static str, Help> {
              all matched results are printed on the standard output \
              with the line terminator determined by the option --print0.\n",
             "\n",
-            "--exec is forbidden while using a filter chain.\n",
+            "--exec is forbidden while using a filter chain. \
+             New actions \"fprint\", \"fdprint\" and the likes are TODOs \
+             for cooperation with other commandline utils like \"xargs\".\n",
             "\n",
             "Please view the man page for example usage. (TODO)"
         )

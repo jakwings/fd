@@ -13,6 +13,8 @@ pub use self::filetype::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     // TODO: FPrint(PathBuf), FPrint0(PathBuf), FdPrint(RawFd), FdPrint0(RawFd), ...
+    // For MPMC, using separate processes is safer&faster than mixing threads with fork&exec?
+    // bash$ ff ... pred1 fprint0 >(xargs -0 ...) or pred2 fprint0 >(xargs -0 ...)
     Print,
     Print0,
     Prune,

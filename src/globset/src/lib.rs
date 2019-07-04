@@ -125,8 +125,8 @@ use regex::bytes::{Regex, RegexBuilder, RegexSet};
 use pathutil::{
     file_name, file_name_ext, normalize_path, os_str_bytes, path_bytes,
 };
-use glob::MatchStrategy;
-pub use glob::{Glob, GlobBuilder, GlobMatcher};
+use self::glob::MatchStrategy;
+pub use self::glob::{Glob, GlobBuilder, GlobMatcher};
 
 mod glob;
 mod pathutil;
@@ -839,7 +839,7 @@ impl RequiredExtensionStrategyBuilder {
 #[cfg(test)]
 mod tests {
     use super::GlobSetBuilder;
-    use glob::Glob;
+    use super::glob::Glob;
 
     #[test]
     fn set_works() {

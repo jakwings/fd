@@ -8,7 +8,7 @@ use std::str;
 use regex;
 use regex::bytes::Regex;
 
-use {Candidate, Error, ErrorKind, new_regex};
+use super::{Candidate, Error, ErrorKind, new_regex};
 
 /// Describes a matching strategy for a particular pattern.
 ///
@@ -1045,8 +1045,8 @@ fn ends_with(needle: &[u8], haystack: &[u8]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use {GlobSetBuilder, ErrorKind};
-    use super::{Glob, GlobBuilder, Token};
+    use super::super::GlobSetBuilder;
+    use super::{ErrorKind, Glob, GlobBuilder, Token};
     use super::Token::*;
 
     #[derive(Clone, Copy, Debug, Default)]

@@ -54,10 +54,25 @@ fn print_entry_uncolorized(entry: Entry) -> io::Result<()> {
 }
 
 fn execute_actions(entry: Entry, mut buffer: Vec<u8>) -> io::Result<()> {
+    let mut print_checked = false;
+    let mut print0_checked = false;
+
     for action in entry.1 {
         match action {
-            Action::Print => add_path_terminator(&mut buffer, false),
-            Action::Print0 => add_path_terminator(&mut buffer, true),
+            Action::Print => {
+                if !print_checked {
+                    check_path(&buffer, false);
+                    print_checked = true;
+                }
+                add_path_terminator(&mut buffer, false);
+            }
+            Action::Print0 => {
+                if !print0_checked {
+                    check_path(&buffer, true);
+                    print0_checked = true;
+                }
+                add_path_terminator(&mut buffer, true);
+            }
             _ => continue,
         }
         io::stdout().write_all(buffer.as_slice())?;
@@ -68,9 +83,6 @@ fn execute_actions(entry: Entry, mut buffer: Vec<u8>) -> io::Result<()> {
 }
 
 fn add_path_terminator(buffer: &mut Vec<u8>, null_terminated: bool) {
-    // TODO: avoid redundant checks
-    check_path(buffer, null_terminated);
-
     if null_terminated {
         buffer.push(b'\0');
     } else {

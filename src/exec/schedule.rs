@@ -8,8 +8,8 @@ use std::time;
 
 use super::counter::Counter;
 use super::internal::{self, error, warn};
-use super::{select_read_to_end, select_write_all, ExecTemplate};
 use super::output::Entry;
+use super::{select_read_to_end, select_write_all, ExecTemplate};
 
 const INTERVAL: u32 = 500 * 1000; // 500 microseconds
 

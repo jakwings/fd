@@ -292,11 +292,7 @@ fn test_unicode_aware() {
 
     //env.assert_output(true, &["--regex", "--unicode", ".", "^\\xCE\\xB1"], "./α β");
 
-    env.assert_output(
-        true,
-        &["--regex", "--unicode", ".", "^[α β]{3}$"],
-        "./α β",
-    );
+    env.assert_output(true, &["--regex", "--unicode", ".", "^[α β]{3}$"], "./α β");
 
     //env.assert_output(true, &["--regex", "--unicode", ".", "^(?-u:α)"], "./α β");
 

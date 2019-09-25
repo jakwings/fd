@@ -191,23 +191,42 @@ fn spawn_sender_threads(
 
                     // https://docs.rs/walkdir/2.2.6/walkdir/struct.WalkDir.html#method.follow_links
                     // > If a symbolic link is broken or is involved in a loop, an error is yielded.
-                    if let ignore::Error::WithPath { path, err: _ } = err {
-                        if !err.is_partial() && !path.exists() {
+                    let err = match err {
+                        ignore::Error::WithDepth { depth: _, err } => err,
+                        _ => err,
+                    };
+                    if let ignore::Error::WithPath { path, err: cause } = err {
+                        if !err.is_partial() {
                             let file_type =
                                 path.symlink_metadata().map(|meta| meta.file_type()).ok();
 
-                            // Other than symlinks, what may not exist?
-                            problematic_entry = Some(DirEntry { path, file_type });
+                            let problematic = if !path.exists() {
+                                true // Other than symlinks, what may not exist?
+                            } else if let ignore::Error::Io(ref cause) = **cause {
+                                // TODO: need to suppress some warnings from deps
+                                //       mkdir -m 000 entrance
+                                if cause.kind() == io::ErrorKind::PermissionDenied
+                                    && file_type.map_or(false, |ftype| ftype.is_dir())
+                                {
+                                    warn(&cause);
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            };
+
+                            if problematic {
+                                problematic_entry = Some(DirEntry { path, file_type });
+                            }
                         }
-                        // FIXME: mkdir -m 000 entrance
                     }
 
                     if problematic_entry.is_some() {
                         problematic_entry.unwrap()
                     } else {
                         if !err.is_partial() || config.verbose {
-                            // TODO: need to suppress some warnings from deps
-                            //       mkdir -m 000 entrance
                             warn(&err);
                         }
                         if err.is_partial() {

@@ -197,18 +197,19 @@ fn spawn_sender_threads(
                     };
                     if let ignore::Error::WithPath { path, err: cause } = err {
                         if !err.is_partial() {
-                            let file_type =
-                                path.symlink_metadata().map(|meta| meta.file_type()).ok();
-
                             let problematic = if !path.exists() {
                                 true // Other than symlinks, what may not exist?
                             } else if let ignore::Error::Io(ref cause) = **cause {
                                 // TODO: need to suppress some warnings from deps
                                 //       mkdir -m 000 entrance
                                 if cause.kind() == io::ErrorKind::PermissionDenied
-                                    && file_type.map_or(false, |ftype| ftype.is_dir())
+                                    // traverse symlink
+                                    && path.is_dir()
                                 {
-                                    warn(&cause);
+                                    warn(&format!(
+                                        "could not open directory {:?}: {}",
+                                        path, cause
+                                    ));
                                     true
                                 } else {
                                     false
@@ -218,6 +219,9 @@ fn spawn_sender_threads(
                             };
 
                             if problematic {
+                                let file_type =
+                                    path.symlink_metadata().map(|meta| meta.file_type()).ok();
+
                                 problematic_entry = Some(DirEntry { path, file_type });
                             }
                         }

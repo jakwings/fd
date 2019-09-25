@@ -20,7 +20,7 @@ build       = "build.rs"
 readme      = "README.md"
 homepage    = "https://github.com/jakwings/ff-find"
 repository  = "https://github.com/jakwings/ff-find"
-description = "ff is a simple and fast utility for files on Unix commandline. It also supports complex filters like GNU find."
+description = "ff is a simple and fast utility for finding files on Unix commandline. It also supports complex filters like GNU find."
 categories  = [ "command-line-utilities" ]
 keywords    = [ "search", "find", "file", "filesystem", "tool" ]
 
